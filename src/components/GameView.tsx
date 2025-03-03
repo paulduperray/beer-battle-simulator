@@ -71,7 +71,8 @@ const mockSocket = {
           );
         }
         
-        setGameAllRolesData(gameAllRolesData);
+        // Fix: Using a callback function that returns the new state
+        setGameAllRolesData(() => [...gameAllRolesData]);
       }, 500);
     }
     
@@ -121,7 +122,8 @@ const mockSocket = {
         
         // Add the new data to the game history
         gameAllRolesData.push(newRoundData);
-        setGameAllRolesData(gameAllRolesData);
+        // Fix: Using a callback function that returns the new state
+        setGameAllRolesData(() => [...gameAllRolesData]);
         
         // Update the current player's view
         mockCallbacks["updateStock"]?.forEach(cb => {
@@ -177,7 +179,8 @@ const mockSocket = {
         
         // Add the new data to the game history
         gameAllRolesData.push(newRoundData);
-        setGameAllRolesData(gameAllRolesData);
+        // Fix: Using a callback function that returns the new state
+        setGameAllRolesData(() => [...gameAllRolesData]);
         
         // Update all player stats in the admin view
         mockCallbacks["updateAllStocks"]?.forEach(cb => 
@@ -238,8 +241,9 @@ let gameAllRolesData = [
 
 let currentRole = "";
 
-const setGameAllRolesData = (updaterFn: (prev: any[]) => any[]) => {
-  gameAllRolesData = updaterFn(gameAllRolesData);
+// Fixed: Changed to accept a callback function
+const setGameAllRolesData = (updaterFn: () => any[]) => {
+  gameAllRolesData = updaterFn();
 };
 
 const GameView: React.FC = () => {
