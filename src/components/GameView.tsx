@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,59 +7,17 @@ import PlayerView from "./PlayerView";
 import AdminView from "./AdminView";
 import { User, Users, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-
-// Game data structure by game ID
-type GameDataType = {
-  gameAllRolesData: Array<{
-    round: number;
-    factory_stock: number;
-    distributor_stock: number;
-    wholesaler_stock: number;
-    retailer_stock: number;
-    factory_cost: number;
-    distributor_cost: number;
-    wholesaler_cost: number;
-    retailer_cost: number;
-  }>;
-  pendingOrders: Array<{
-    id: string;
-    round: number;
-    deliveryRound: number;
-    amount: number;
-    source: string;
-    destination: string;
-    status: "pending" | "completed";
-  }>;
-  pendingOrderId: number;
-};
-
-// Store for all game data by game ID
-const gameStore: Record<string, GameDataType> = {};
-
-// Helper function to get or create game data for a specific gameId
-const getGameData = (gameId: string): GameDataType => {
-  if (!gameStore[gameId]) {
-    // Initialize new game data
-    gameStore[gameId] = {
-      gameAllRolesData: [
-        {
-          round: 1,
-          factory_stock: 15,
-          distributor_stock: 12,
-          wholesaler_stock: 10,
-          retailer_stock: 8,
-          factory_cost: 100,
-          distributor_cost: 120,
-          wholesaler_cost: 150,
-          retailer_cost: 180
-        }
-      ],
-      pendingOrders: [],
-      pendingOrderId: 1
-    };
-  }
-  return gameStore[gameId];
-};
+import { 
+  createGame, 
+  joinGame, 
+  getGameData, 
+  placeOrder,
+  updateCosts, 
+  advanceToNextRound, 
+  getAdminViewData,
+  subscribeToGameUpdates
+} from "@/lib/supabase/gameService";
+import { supabase } from "@/lib/supabase/client";
 
 // Helper function to get cost multiplier based on role
 const getCostMultiplier = (role: string): number => {
@@ -71,233 +30,10 @@ const getCostMultiplier = (role: string): number => {
   }
 };
 
-// Mock socket.io-client for the demo
-const mockSocket = {
-  on: (event: string, callback: Function) => {
-    // Store callbacks to trigger them later
-    if (!mockCallbacks[event]) {
-      mockCallbacks[event] = [];
-    }
-    mockCallbacks[event].push(callback);
-    return mockSocket;
-  },
-  off: () => mockSocket,
-  emit: (event: string, data: any) => {
-    console.log(`Emitted ${event}:`, data);
-    
-    // Mock responses based on emitted events
-    if (event === "joinGame") {
-      setTimeout(() => {
-        const { gameId, role } = data;
-        const gameData = getGameData(gameId);
-        
-        mockCallbacks["updateStock"]?.forEach(cb => 
-          cb({ stock: 10, cost: Math.floor(Math.random() * 200) })
-        );
-        
-        // Update the Admin view with data for all roles
-        if (role === "admin") {
-          updateAdminView(gameId);
-        }
-      }, 500);
-    }
-    
-    if (event === "placeOrder") {
-      setTimeout(() => {
-        const { gameId, order, role } = data;
-        const gameData = getGameData(gameId);
-        
-        // Add the order to pendingOrders with a 2-round delay
-        const orderAmount = order;
-        const targetDeliveryRound = gameData.gameAllRolesData.length + 2; // Deliver after 2 rounds
-        
-        // Determine the source and destination for the order
-        let source, destination;
-        if (role === "retailer") {
-          source = "wholesaler";
-          destination = "retailer";
-        } else if (role === "wholesaler") {
-          source = "distributor";
-          destination = "wholesaler";
-        } else if (role === "distributor") {
-          source = "factory";
-          destination = "distributor";
-        } else if (role === "factory") {
-          source = "production";
-          destination = "factory";
-        }
-        
-        // Add the pending order to the game's order buffer
-        gameData.pendingOrders.push({
-          id: `order-${gameData.pendingOrderId++}`,
-          round: gameData.gameAllRolesData.length,
-          deliveryRound: targetDeliveryRound,
-          amount: orderAmount,
-          source: source,
-          destination: destination,
-          status: "pending"
-        });
-        
-        // Get latest data (for display purposes only - actual stock update will happen later)
-        const lastRoundData = { ...gameData.gameAllRolesData[gameData.gameAllRolesData.length - 1] };
-        
-        // Update the current player's view with pending order info
-        mockCallbacks["updateStock"]?.forEach(cb => {
-          if (role) {
-            // No immediate stock change, only cost increases to reflect the order placement
-            const newCost = lastRoundData[`${role}_cost`] + (orderAmount * getCostMultiplier(role));
-            cb({ stock: lastRoundData[`${role}_stock`], cost: newCost });
-            
-            // Update cost in the data
-            const updatedLastRound = { ...lastRoundData };
-            updatedLastRound[`${role}_cost`] = newCost;
-            
-            // Update the last round data with the new cost
-            gameData.gameAllRolesData[gameData.gameAllRolesData.length - 1] = updatedLastRound;
-          }
-        });
-        
-        // Update the admin view with pending orders information
-        updateAdminView(gameId);
-      }, 500);
-    }
-    
-    if (event === "nextRound") {
-      setTimeout(() => {
-        const { gameId } = data;
-        const gameData = getGameData(gameId);
-        
-        // Get latest data
-        const lastRoundData = { ...gameData.gameAllRolesData[gameData.gameAllRolesData.length - 1] };
-        const nextRound = gameData.gameAllRolesData.length + 1;
-        
-        // Create new round data as a starting point
-        const newRoundData = {
-          round: nextRound,
-          factory_stock: lastRoundData.factory_stock,
-          distributor_stock: lastRoundData.distributor_stock,
-          wholesaler_stock: lastRoundData.wholesaler_stock,
-          retailer_stock: lastRoundData.retailer_stock,
-          factory_cost: lastRoundData.factory_cost,
-          distributor_cost: lastRoundData.distributor_cost,
-          wholesaler_cost: lastRoundData.wholesaler_cost,
-          retailer_cost: lastRoundData.retailer_cost
-        };
-        
-        // Process orders that are ready for delivery in this round
-        const ordersToProcess = gameData.pendingOrders.filter(order => 
-          order.deliveryRound === nextRound && order.status === "pending"
-        );
-        
-        // Process each order that is due in this round
-        ordersToProcess.forEach(order => {
-          // Update stocks based on the order
-          if (order.destination === "retailer") {
-            newRoundData.retailer_stock += order.amount;
-            newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock - order.amount);
-          } else if (order.destination === "wholesaler") {
-            newRoundData.wholesaler_stock += order.amount;
-            newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock - order.amount);
-          } else if (order.destination === "distributor") {
-            newRoundData.distributor_stock += order.amount;
-            newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock - order.amount);
-          } else if (order.destination === "factory") {
-            newRoundData.factory_stock += order.amount; // Production creates new stock
-          }
-          
-          // Mark the order as completed
-          order.status = "completed";
-        });
-        
-        // Add random variations to make the game more interesting
-        newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock + Math.floor(Math.random() * 6) - 2);
-        newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock + Math.floor(Math.random() * 4) - 2);
-        newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock + Math.floor(Math.random() * 4) - 2);
-        newRoundData.retailer_stock = Math.max(0, newRoundData.retailer_stock + Math.floor(Math.random() * 4) - 2);
-        
-        // Add the new data to the game history
-        gameData.gameAllRolesData.push(newRoundData);
-        
-        // Update the admin view with the latest data
-        updateAdminView(gameId);
-        
-        // Also update the current player's stats
-        mockCallbacks["updateStock"]?.forEach(cb => {
-          if (currentPlayerRole && currentGameId === gameId) {
-            const newStock = newRoundData[`${currentPlayerRole}_stock`];
-            const newCost = newRoundData[`${currentPlayerRole}_cost`];
-            cb({ stock: newStock, cost: newCost });
-          }
-        });
-      }, 800);
-    }
-    
-    return mockSocket;
-  }
-};
-
-// Function to update the admin view with latest data for a specific game
-const updateAdminView = (gameId: string) => {
-  const gameData = getGameData(gameId);
-  const lastRoundData = gameData.gameAllRolesData[gameData.gameAllRolesData.length - 1];
-  
-  // Count pending orders for each role
-  const pendingOrdersByRole = {
-    factory: 0,
-    distributor: 0,
-    wholesaler: 0,
-    retailer: 0
-  };
-  
-  // Count incoming deliveries for each role
-  const incomingDeliveriesByRole = {
-    factory: 0,
-    distributor: 0,
-    wholesaler: 0,
-    retailer: 0
-  };
-  
-  // Process pending orders to get counts
-  gameData.pendingOrders.forEach(order => {
-    if (order.status === "pending") {
-      // Increment pending orders for the source
-      if (order.source !== "production" && pendingOrdersByRole[order.source] !== undefined) {
-        pendingOrdersByRole[order.source] += order.amount;
-      }
-      
-      // Increment incoming deliveries for the destination
-      if (incomingDeliveriesByRole[order.destination] !== undefined) {
-        incomingDeliveriesByRole[order.destination] += order.amount;
-      }
-    }
-  });
-  
-  // Update the Admin view with data for all roles
-  mockCallbacks["updateAllStocks"]?.forEach(cb => 
-    cb({
-      gameData: gameData.gameAllRolesData,
-      stocks: {
-        factory: lastRoundData.factory_stock,
-        distributor: lastRoundData.distributor_stock,
-        wholesaler: lastRoundData.wholesaler_stock,
-        retailer: lastRoundData.retailer_stock,
-      },
-      pendingOrders: pendingOrdersByRole,
-      incomingDeliveries: incomingDeliveriesByRole
-    })
-  );
-};
-
-// Store for callbacks
-const mockCallbacks: Record<string, Function[]> = {};
-
-// Track current player info
-let currentGameId = "";
-let currentPlayerRole = "";
-
 const GameView: React.FC = () => {
   const [view, setView] = useState<string>("join");
   const [gameId, setGameId] = useState<string>("");
+  const [gameCode, setGameCode] = useState<string>("");
   const [role, setRole] = useState<string>("");
   const [stock, setStock] = useState<number>(10);
   const [cost, setCost] = useState<number>(0);
@@ -306,82 +42,235 @@ const GameView: React.FC = () => {
   const [playerStocks, setPlayerStocks] = useState<Record<string, number>>({});
   const [pendingOrders, setPendingOrders] = useState<Record<string, number>>({});
   const [incomingDeliveries, setIncomingDeliveries] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState<boolean>(false);
   
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Set up mock socket listeners
-    mockSocket.on("updateStock", (data: { stock: number; cost: number }) => {
-      setStock(data.stock);
-      setCost(data.cost);
-      
-      // Update local game data for the player view
-      if (role) {
-        const lastData = currentGameData.length > 0 ? currentGameData[currentGameData.length - 1] : { round: 0 };
-        setCurrentGameData(prev => [...prev, { 
-          round: lastData.round + 1, 
-          cost: data.cost, 
-          stock: data.stock 
-        }]);
-      }
-    });
-
-    mockSocket.on("updateAllStocks", (data: { 
-      gameData: any[];
-      stocks: Record<string, number>; 
-      pendingOrders: Record<string, number>; 
-      incomingDeliveries: Record<string, number> 
-    }) => {
-      if (data.gameData) {
-        setAllRolesData(data.gameData);
-      }
-      setPlayerStocks(data.stocks);
-      setPendingOrders(data.pendingOrders);
-      setIncomingDeliveries(data.incomingDeliveries);
-    });
+  // Function to load game data based on role
+  const loadGameData = async () => {
+    if (!gameId) return;
     
-    return () => {
-      // Cleanup listeners
-      mockSocket.off();
-    };
-  }, [currentGameData, role]);
-
-  const handleJoinGame = (newGameId: string, newRole: string) => {
-    if (newGameId && newRole) {
-      setGameId(newGameId);
-      setRole(newRole);
-      currentGameId = newGameId;
-      currentPlayerRole = newRole;
-      setView(newRole === "admin" ? "admin" : "player");
+    try {
+      setLoading(true);
       
-      // Initialize game data for this game ID if it doesn't exist yet
-      getGameData(newGameId);
-      
-      mockSocket.emit("joinGame", { gameId: newGameId, role: newRole });
-      
+      if (role === "admin") {
+        // Load admin view data
+        const data = await getGameData(gameId);
+        if (data) {
+          setAllRolesData(data.rounds);
+          
+          // Also load current stocks and orders
+          const adminData = await getAdminViewData(gameId);
+          if (adminData) {
+            setPlayerStocks(adminData.stocks);
+            setPendingOrders(adminData.pendingOrders);
+            setIncomingDeliveries(adminData.incomingDeliveries);
+          }
+        }
+      } else {
+        // Load player view data
+        const data = await getGameData(gameId);
+        if (data && data.rounds.length > 0) {
+          const latestRound = data.rounds[data.rounds.length - 1];
+          
+          // Set current stock and cost based on role
+          const currentStock = latestRound[`${role}_stock`];
+          const currentCost = latestRound[`${role}_cost`];
+          
+          setStock(currentStock);
+          setCost(currentCost);
+          
+          // Update local game data for the player view
+          setCurrentGameData(data.rounds.map(round => ({
+            round: round.round,
+            stock: round[`${role}_stock`],
+            cost: round[`${role}_cost`]
+          })));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading game data:", error);
       toast({
-        title: "Joined Game",
-        description: `You joined game ${newGameId} as ${newRole}`,
+        title: "Error",
+        description: "Failed to load game data",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePlaceOrder = (orderAmount: number) => {
-    mockSocket.emit("placeOrder", { order: orderAmount, role, gameId });
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!gameId) return;
     
-    toast({
-      title: "Order Placed",
-      description: `You ordered ${orderAmount} units`,
+    // Subscribe to game updates
+    const subscription = subscribeToGameUpdates(gameId, (payload) => {
+      // Reload game data when something changes
+      loadGameData();
     });
+    
+    // Initial data load
+    loadGameData();
+    
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [gameId, role]);
+
+  const handleJoinGame = async (newGameCode: string, newRole: string) => {
+    if (!newGameCode || !newRole) return;
+    
+    try {
+      setLoading(true);
+      
+      // Handle admin case - create a new game if it doesn't exist
+      if (newRole === "admin") {
+        const game = await createGame(newGameCode);
+        if (game) {
+          setGameId(game.id);
+          setGameCode(game.game_code);
+          setRole(newRole);
+          setView("admin");
+          
+          toast({
+            title: "Game Created",
+            description: `You created game ${newGameCode} as ${newRole}`,
+          });
+        } else {
+          throw new Error("Failed to create game");
+        }
+      } else {
+        // For players, join an existing game
+        const { game, player } = await joinGame(newGameCode, newRole);
+        
+        if (game && player) {
+          setGameId(game.id);
+          setGameCode(game.game_code);
+          setRole(newRole);
+          setView("player");
+          
+          toast({
+            title: "Joined Game",
+            description: `You joined game ${newGameCode} as ${newRole}`,
+          });
+        } else {
+          throw new Error("Failed to join game");
+        }
+      }
+    } catch (error) {
+      console.error("Error joining game:", error);
+      toast({
+        title: "Error",
+        description: "Failed to join game. Please check the game code and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleNextRound = () => {
-    mockSocket.emit("nextRound", { gameId });
+  const handlePlaceOrder = async (orderAmount: number) => {
+    if (!gameId || !role || orderAmount <= 0) return;
     
-    toast({
-      title: "Next Round",
-      description: "Advanced to the next round",
-    });
+    try {
+      setLoading(true);
+      
+      // Determine the source and destination for the order
+      let source, destination;
+      if (role === "retailer") {
+        source = "wholesaler";
+        destination = "retailer";
+      } else if (role === "wholesaler") {
+        source = "distributor";
+        destination = "wholesaler";
+      } else if (role === "distributor") {
+        source = "factory";
+        destination = "distributor";
+      } else if (role === "factory") {
+        source = "production";
+        destination = "factory";
+      } else {
+        throw new Error("Invalid role");
+      }
+      
+      // First, get current game round
+      const { data: game } = await supabase
+        .from('games')
+        .select('current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (!game) {
+        throw new Error("Failed to get current round");
+      }
+      
+      // Place the order
+      const order = await placeOrder(
+        gameId,
+        game.current_round,
+        orderAmount,
+        source,
+        destination
+      );
+      
+      if (order) {
+        // Update costs to reflect the order placement
+        const costIncrease = orderAmount * getCostMultiplier(role);
+        await updateCosts(gameId, game.current_round, role, costIncrease);
+        
+        toast({
+          title: "Order Placed",
+          description: `You ordered ${orderAmount} units`,
+        });
+        
+        // Reload game data to reflect changes
+        await loadGameData();
+      } else {
+        throw new Error("Failed to place order");
+      }
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to place order",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNextRound = async () => {
+    if (!gameId) return;
+    
+    try {
+      setLoading(true);
+      
+      const { game, newRound } = await advanceToNextRound(gameId);
+      
+      if (game && newRound) {
+        toast({
+          title: "Next Round",
+          description: `Advanced to round ${game.current_round}`,
+        });
+        
+        // Reload game data to reflect changes
+        await loadGameData();
+      } else {
+        throw new Error("Failed to advance to next round");
+      }
+    } catch (error) {
+      console.error("Error advancing round:", error);
+      toast({
+        title: "Error",
+        description: "Failed to advance to next round",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Show stock chart keys based on role or admin view
@@ -402,6 +291,12 @@ const GameView: React.FC = () => {
         <h1 className="text-3xl font-semibold tracking-tight mb-1">Beer Distribution Game</h1>
         <p className="text-muted-foreground">Simulate supply chain dynamics and decision-making</p>
       </div>
+      
+      {loading && (
+        <div className="w-full flex justify-center my-4">
+          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
+        </div>
+      )}
       
       {role ? (
         <div className="mb-6">
