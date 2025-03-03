@@ -66,12 +66,52 @@ const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </div>
 
-      <StockChart 
-        data={gameData} 
-        dataKeys={chartDataKeys}
-        title="Supply Chain Performance"
-        description="Track stock levels and costs across all roles"
-      />
+      {/* Individual Role Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <StockChart 
+          data={gameData} 
+          dataKeys={["factory_stock", "factory_cost"]}
+          title="Factory Performance"
+          description="Track stock levels and costs for Factory"
+          colorMap={{
+            "factory_stock": "hsl(220, 70%, 50%)",
+            "factory_cost": "hsl(220, 70%, 70%)"
+          }}
+        />
+        
+        <StockChart 
+          data={gameData} 
+          dataKeys={["distributor_stock", "distributor_cost"]}
+          title="Distributor Performance"
+          description="Track stock levels and costs for Distributor"
+          colorMap={{
+            "distributor_stock": "hsl(160, 70%, 50%)",
+            "distributor_cost": "hsl(160, 70%, 70%)"
+          }}
+        />
+        
+        <StockChart 
+          data={gameData} 
+          dataKeys={["wholesaler_stock", "wholesaler_cost"]}
+          title="Wholesaler Performance"
+          description="Track stock levels and costs for Wholesaler"
+          colorMap={{
+            "wholesaler_stock": "hsl(280, 70%, 50%)",
+            "wholesaler_cost": "hsl(280, 70%, 70%)"
+          }}
+        />
+        
+        <StockChart 
+          data={gameData} 
+          dataKeys={["retailer_stock", "retailer_cost"]}
+          title="Retailer Performance"
+          description="Track stock levels and costs for Retailer"
+          colorMap={{
+            "retailer_stock": "hsl(340, 70%, 50%)",
+            "retailer_cost": "hsl(340, 70%, 70%)"
+          }}
+        />
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
