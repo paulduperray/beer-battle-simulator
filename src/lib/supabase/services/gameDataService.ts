@@ -1,101 +1,147 @@
 
-import { supabase, GameRound, PendingOrder } from '../client';
+import { supabase, isSupabaseConfigured } from '../client';
 
-// Get game data
-export const getGameData = async (gameId: string): Promise<{ rounds: GameRound[]; pendingOrders: PendingOrder[] } | null> => {
-  const { data: rounds, error: roundsError } = await supabase
-    .from('game_rounds')
-    .select('*')
-    .eq('game_id', gameId)
-    .order('round', { ascending: true });
-  
-  if (roundsError) {
-    console.error('Error fetching game rounds:', roundsError);
-    return null;
+export async function getGameData(gameId: string) {
+  // Return mock data if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('Returning mock game data because Supabase is not configured');
+    return {
+      id: gameId,
+      game_code: 'MOCK',
+      current_round: 1,
+      rounds: [
+        {
+          round: 1,
+          factory_stock: 10,
+          distributor_stock: 10,
+          wholesaler_stock: 10,
+          retailer_stock: 10,
+          factory_cost: 0,
+          distributor_cost: 0,
+          wholesaler_cost: 0,
+          retailer_cost: 0,
+        }
+      ]
+    };
   }
-  
-  const { data: pendingOrders, error: ordersError } = await supabase
-    .from('pending_orders')
-    .select('*')
-    .eq('game_id', gameId)
-    .order('created_at', { ascending: true });
-  
-  if (ordersError) {
-    console.error('Error fetching pending orders:', ordersError);
-    return null;
-  }
-  
-  return { rounds, pendingOrders };
-};
 
-// Get player stocks and pending orders for admin view
-export const getAdminViewData = async (gameId: string): Promise<{
-  stocks: Record<string, number>;
-  pendingOrders: Record<string, number>;
-  incomingDeliveries: Record<string, number>;
-} | null> => {
-  const { data: latestRound, error: roundError } = await supabase
-    .from('game_rounds')
-    .select('*')
-    .eq('game_id', gameId)
-    .order('round', { ascending: false })
-    .limit(1)
-    .single();
-    
-  if (roundError || !latestRound) {
-    console.error('Error fetching latest round:', roundError);
+  // Real Supabase implementation
+  try {
+    // Get the game
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .single();
+
+    if (gameError) throw gameError;
+
+    // Get the rounds for this game
+    const { data: rounds, error: roundsError } = await supabase
+      .from('game_rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('round', { ascending: true });
+
+    if (roundsError) throw roundsError;
+
+    return { ...game, rounds: rounds || [] };
+  } catch (error) {
+    console.error('Error getting game data:', error);
     return null;
   }
-  
-  const { data: pendingOrders, error: ordersError } = await supabase
-    .from('pending_orders')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('status', 'pending');
-  
-  if (ordersError) {
-    console.error('Error fetching pending orders:', ordersError);
+}
+
+export async function getAdminViewData(gameId: string) {
+  // Return mock data if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('Returning mock admin data because Supabase is not configured');
+    return {
+      stocks: {
+        factory: 10,
+        distributor: 10,
+        wholesaler: 10,
+        retailer: 10,
+      },
+      pendingOrders: {
+        factory: 0,
+        distributor: 0,
+        wholesaler: 0,
+        retailer: 0,
+      },
+      incomingDeliveries: {
+        factory: 0,
+        distributor: 0,
+        wholesaler: 0,
+        retailer: 0,
+      }
+    };
+  }
+
+  // Real Supabase implementation
+  try {
+    // Get the latest round
+    const { data: latestRound, error: roundError } = await supabase
+      .from('game_rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('round', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (roundError) throw roundError;
+
+    // Get pending orders
+    const { data: pendingOrders, error: ordersError } = await supabase
+      .from('pending_orders')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('fulfilled', false);
+
+    if (ordersError) throw ordersError;
+
+    // Process the data into the required format
+    const stocks = {
+      factory: latestRound?.factory_stock || 0,
+      distributor: latestRound?.distributor_stock || 0,
+      wholesaler: latestRound?.wholesaler_stock || 0,
+      retailer: latestRound?.retailer_stock || 0,
+    };
+
+    // Aggregate orders by destination
+    const ordersByRole = {
+      factory: 0,
+      distributor: 0,
+      wholesaler: 0,
+      retailer: 0,
+    };
+
+    // Aggregate incoming deliveries by destination
+    const deliveriesByRole = {
+      factory: 0,
+      distributor: 0,
+      wholesaler: 0,
+      retailer: 0,
+    };
+
+    // Process pending orders
+    pendingOrders?.forEach(order => {
+      if (order.destination !== 'production') {
+        ordersByRole[order.destination] += order.quantity;
+      }
+      
+      if (order.source !== 'production') {
+        deliveriesByRole[order.source] += order.quantity;
+      }
+    });
+
+    return {
+      stocks,
+      pendingOrders: ordersByRole,
+      incomingDeliveries: deliveriesByRole,
+    };
+  } catch (error) {
+    console.error('Error getting admin view data:', error);
     return null;
   }
-  
-  const stocks = {
-    factory: latestRound.factory_stock,
-    distributor: latestRound.distributor_stock,
-    wholesaler: latestRound.wholesaler_stock,
-    retailer: latestRound.retailer_stock
-  };
-  
-  // Count pending orders for each role (source)
-  const pendingOrdersByRole = {
-    factory: 0,
-    distributor: 0,
-    wholesaler: 0,
-    retailer: 0
-  };
-  
-  // Count incoming deliveries for each role (destination)
-  const incomingDeliveriesByRole = {
-    factory: 0,
-    distributor: 0,
-    wholesaler: 0,
-    retailer: 0
-  };
-  
-  pendingOrders.forEach(order => {
-    // Increment pending orders for the source
-    if (order.source !== 'production' && pendingOrdersByRole[order.source] !== undefined) {
-      pendingOrdersByRole[order.source] += order.amount;
-    }
-    
-    // Increment incoming deliveries for the destination
-    if (incomingDeliveriesByRole[order.destination] !== undefined) {
-      incomingDeliveriesByRole[order.destination] += order.amount;
-    }
-  });
-  
-  return {
-    stocks,
-    pendingOrders: pendingOrdersByRole,
-    incomingDeliveries: incomingDeliveriesByRole
-  };
-};
+}

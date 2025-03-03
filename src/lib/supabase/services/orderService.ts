@@ -1,77 +1,87 @@
 
-import { supabase, PendingOrder, GameRound } from '../client';
+import { supabase, isSupabaseConfigured } from '../client';
 
-// Place an order
-export const placeOrder = async (
+export async function placeOrder(
   gameId: string,
   round: number,
-  amount: number,
+  quantity: number,
   source: string,
   destination: string
-): Promise<PendingOrder | null> => {
-  // Orders are delivered after 2 rounds
-  const deliveryRound = round + 2;
-  
-  const { data, error } = await supabase
-    .from('pending_orders')
-    .insert({
+) {
+  // Return mock data if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('Creating mock order because Supabase is not configured');
+    return {
+      id: 'mock-order-id',
       game_id: gameId,
-      round,
-      delivery_round: deliveryRound,
-      amount,
-      source,
-      destination,
-      status: 'pending'
-    })
-    .select('*')
-    .single();
-  
-  if (error) {
+      round: round,
+      quantity: quantity,
+      source: source,
+      destination: destination,
+      fulfilled: false,
+    };
+  }
+
+  // Real Supabase implementation
+  try {
+    const { data, error } = await supabase
+      .from('pending_orders')
+      .insert({
+        game_id: gameId,
+        round: round,
+        quantity: quantity,
+        source: source,
+        destination: destination,
+        fulfilled: false,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
     console.error('Error placing order:', error);
     return null;
   }
-  
-  return data;
-};
+}
 
-// Update costs based on order
-export const updateCosts = async (
+export async function updateCosts(
   gameId: string,
   round: number,
   role: string,
   costIncrease: number
-): Promise<GameRound | null> => {
-  // Get the current round data
-  const { data: currentRound, error: fetchError } = await supabase
-    .from('game_rounds')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('round', round)
-    .single();
-  
-  if (fetchError || !currentRound) {
-    console.error('Error fetching current round:', fetchError);
-    return null;
+) {
+  // Mock implementation if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('Mock cost update because Supabase is not configured');
+    return true;
   }
-  
-  // Update the cost for the specific role
-  const costField = `${role}_cost`;
-  const updatedCost = currentRound[costField] + costIncrease;
-  
-  const updateData = {};
-  updateData[costField] = updatedCost;
-  
-  const { data: updatedRound, error: updateError } = await supabase
-    .from('game_rounds')
-    .update(updateData)
-    .eq('id', currentRound.id)
-    .select('*')
-    .single();
-  
-  if (updateError) {
-    console.error('Error updating costs:', updateError);
-    return null;
+
+  // Real Supabase implementation
+  try {
+    // First, get the current round data
+    const { data: currentRound, error: fetchError } = await supabase
+      .from('game_rounds')
+      .select(`*`)
+      .eq('game_id', gameId)
+      .eq('round', round)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const costKey = `${role}_cost`;
+    const newCost = (currentRound[costKey] || 0) + costIncrease;
+
+    // Update the cost
+    const { error: updateError } = await supabase
+      .from('game_rounds')
+      .update({ [costKey]: newCost })
+      .eq('id', currentRound.id);
+
+    if (updateError) throw updateError;
+    return true;
+  } catch (error) {
+    console.error('Error updating costs:', error);
+    return false;
   }
-  
-  return updatedRound;
-};
+}
