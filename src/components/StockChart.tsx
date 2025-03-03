@@ -5,12 +5,15 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Ca
 
 interface GameData {
   round: number;
-  cost: number;
-  stock: number;
+  [key: string]: number | string;
 }
 
 interface StockChartProps {
   data: GameData[];
+  dataKeys: string[];
+  title: string;
+  description: string;
+  colorMap?: Record<string, string>;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -18,12 +21,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return (
       <div className="bg-card/95 p-3 border border-border/60 rounded-md shadow-md backdrop-blur-sm">
         <p className="font-medium">Round {label}</p>
-        <p className="text-sm text-blue-500">
-          Stock: <span className="font-medium">{payload[0].value} units</span>
-        </p>
-        <p className="text-sm text-violet-500">
-          Cost: <span className="font-medium">{payload[1].value}€</span>
-        </p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: <span className="font-medium">{entry.value}</span>
+          </p>
+        ))}
       </div>
     );
   }
@@ -31,15 +33,31 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-const StockChart: React.FC<StockChartProps> = ({ data }) => {
+const StockChart: React.FC<StockChartProps> = ({ data, dataKeys, title, description, colorMap }) => {
+  // Default colors if not provided
+  const defaultColors = {
+    "factory_stock": "hsl(220, 70%, 50%)",
+    "distributor_stock": "hsl(160, 70%, 50%)",
+    "wholesaler_stock": "hsl(280, 70%, 50%)",
+    "retailer_stock": "hsl(340, 70%, 50%)",
+    "factory_cost": "hsl(220, 70%, 70%)",
+    "distributor_cost": "hsl(160, 70%, 70%)",
+    "wholesaler_cost": "hsl(280, 70%, 70%)",
+    "retailer_cost": "hsl(340, 70%, 70%)",
+    "stock": "hsl(var(--primary))",
+    "cost": "hsl(265, 89%, 78%)"
+  };
+
+  const colors = { ...defaultColors, ...colorMap };
+
   // Ensure we have data
-  const chartData = data.length > 0 ? data : [{ round: 0, cost: 0, stock: 0 }];
+  const chartData = data.length > 0 ? data : [{ round: 0 }];
 
   return (
     <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>Game Performance</CardTitle>
-        <CardDescription>Track your stock and cost over time</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px] w-full">
@@ -59,26 +77,19 @@ const StockChart: React.FC<StockChartProps> = ({ data }) => {
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="stock" 
-                name="Stock Level" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ stroke: 'hsl(var(--primary))', fill: 'hsl(var(--card))' }}
-                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', fill: 'hsl(var(--primary))' }}
-                animationDuration={1000}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="cost" 
-                name="Cumulative Cost" 
-                stroke="hsl(265, 89%, 78%)" 
-                strokeWidth={2}
-                dot={{ stroke: 'hsl(265, 89%, 78%)', fill: 'hsl(var(--card))' }}
-                activeDot={{ r: 6, stroke: 'hsl(265, 89%, 78%)', fill: 'hsl(265, 89%, 78%)' }}
-                animationDuration={1500}
-              />
+              {dataKeys.map((key, index) => (
+                <Line 
+                  key={key}
+                  type="monotone" 
+                  dataKey={key} 
+                  name={key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+                  stroke={colors[key]} 
+                  strokeWidth={2}
+                  dot={{ stroke: colors[key], fill: 'hsl(var(--card))' }}
+                  activeDot={{ r: 6, stroke: colors[key], fill: colors[key] }}
+                  animationDuration={1000 + (index * 100)}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>

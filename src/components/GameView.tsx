@@ -28,14 +28,32 @@ const mockSocket = {
           cb({ stock: 10, cost: Math.floor(Math.random() * 200) })
         );
         
+        // Initialize all role data if this is a new game
+        if (!gameAllRolesData.length) {
+          gameAllRolesData = [
+            {
+              round: 1,
+              factory_stock: 15,
+              distributor_stock: 12,
+              wholesaler_stock: 10,
+              retailer_stock: 8,
+              factory_cost: 100,
+              distributor_cost: 120,
+              wholesaler_cost: 150,
+              retailer_cost: 180
+            }
+          ];
+        }
+        
+        // Update the Admin view with data for all roles
         if (data.role === "admin") {
           mockCallbacks["updateAllStocks"]?.forEach(cb => 
             cb({
               stocks: {
-                factory: Math.floor(Math.random() * 20) + 5,
-                distributor: Math.floor(Math.random() * 20) + 5,
-                wholesaler: Math.floor(Math.random() * 20) + 5,
-                retailer: Math.floor(Math.random() * 20) + 5,
+                factory: gameAllRolesData[gameAllRolesData.length - 1].factory_stock,
+                distributor: gameAllRolesData[gameAllRolesData.length - 1].distributor_stock,
+                wholesaler: gameAllRolesData[gameAllRolesData.length - 1].wholesaler_stock,
+                retailer: gameAllRolesData[gameAllRolesData.length - 1].retailer_stock,
               },
               pendingOrders: {
                 factory: Math.floor(Math.random() * 10),
@@ -52,29 +70,123 @@ const mockSocket = {
             })
           );
         }
+        
+        setGameAllRolesData(gameAllRolesData);
       }, 500);
     }
     
     if (event === "placeOrder") {
       setTimeout(() => {
+        // Simulate the impact of an order on stock levels
+        // When a role places an order, it affects their stock and the stock of the next upstream role
+        const orderAmount = data.order;
+        const role = data.role;
+        
+        // Get latest data
+        const lastRoundData = { ...gameAllRolesData[gameAllRolesData.length - 1] };
+        const nextRound = gameAllRolesData.length + 1;
+        
+        // Create updated stock data for all roles
+        const newRoundData = {
+          round: nextRound,
+          factory_stock: lastRoundData.factory_stock,
+          distributor_stock: lastRoundData.distributor_stock,
+          wholesaler_stock: lastRoundData.wholesaler_stock,
+          retailer_stock: lastRoundData.retailer_stock,
+          factory_cost: lastRoundData.factory_cost,
+          distributor_cost: lastRoundData.distributor_cost,
+          wholesaler_cost: lastRoundData.wholesaler_cost,
+          retailer_cost: lastRoundData.retailer_cost
+        };
+        
+        // Update stock based on the role that placed the order
+        // This is a simplified model - in a real game, these would be more complex
+        if (role === "retailer") {
+          // Retailer order affects retailer's stock (increase) and wholesaler's stock (decrease)
+          newRoundData.retailer_stock += orderAmount;
+          newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock - orderAmount);
+          newRoundData.retailer_cost += orderAmount * 5; // Cost of ordering
+        } else if (role === "wholesaler") {
+          newRoundData.wholesaler_stock += orderAmount;
+          newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock - orderAmount);
+          newRoundData.wholesaler_cost += orderAmount * 4;
+        } else if (role === "distributor") {
+          newRoundData.distributor_stock += orderAmount;
+          newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock - orderAmount);
+          newRoundData.distributor_cost += orderAmount * 3;
+        } else if (role === "factory") {
+          newRoundData.factory_stock += orderAmount;
+          newRoundData.factory_cost += orderAmount * 2; // Production cost
+        }
+        
+        // Add the new data to the game history
+        gameAllRolesData.push(newRoundData);
+        setGameAllRolesData(gameAllRolesData);
+        
+        // Update the current player's view
         mockCallbacks["updateStock"]?.forEach(cb => {
-          const newStock = Math.max(0, 10 - Math.floor(Math.random() * 5));
-          const newCost = Math.floor(Math.random() * 100) + 100;
+          const newStock = newRoundData[`${role}_stock`];
+          const newCost = newRoundData[`${role}_cost`];
           cb({ stock: newStock, cost: newCost });
         });
+        
+        // If admin is connected, update all stocks
+        mockCallbacks["updateAllStocks"]?.forEach(cb => 
+          cb({
+            stocks: {
+              factory: newRoundData.factory_stock,
+              distributor: newRoundData.distributor_stock,
+              wholesaler: newRoundData.wholesaler_stock,
+              retailer: newRoundData.retailer_stock,
+            },
+            pendingOrders: {
+              factory: Math.floor(Math.random() * 10),
+              distributor: Math.floor(Math.random() * 10),
+              wholesaler: Math.floor(Math.random() * 10),
+              retailer: Math.floor(Math.random() * 10),
+            },
+            incomingDeliveries: {
+              factory: Math.floor(Math.random() * 10),
+              distributor: Math.floor(Math.random() * 10),
+              wholesaler: Math.floor(Math.random() * 10),
+              retailer: Math.floor(Math.random() * 10),
+            }
+          })
+        );
       }, 500);
     }
     
     if (event === "nextRound") {
       setTimeout(() => {
-        // Update all player stats
+        // Get latest data
+        const lastRoundData = { ...gameAllRolesData[gameAllRolesData.length - 1] };
+        const nextRound = gameAllRolesData.length + 1;
+        
+        // Simulate random changes for the next round
+        const newRoundData = {
+          round: nextRound,
+          factory_stock: Math.max(0, lastRoundData.factory_stock + Math.floor(Math.random() * 10) - 5),
+          distributor_stock: Math.max(0, lastRoundData.distributor_stock + Math.floor(Math.random() * 8) - 4),
+          wholesaler_stock: Math.max(0, lastRoundData.wholesaler_stock + Math.floor(Math.random() * 6) - 3),
+          retailer_stock: Math.max(0, lastRoundData.retailer_stock + Math.floor(Math.random() * 4) - 2),
+          factory_cost: lastRoundData.factory_cost + Math.floor(Math.random() * 30),
+          distributor_cost: lastRoundData.distributor_cost + Math.floor(Math.random() * 25),
+          wholesaler_cost: lastRoundData.wholesaler_cost + Math.floor(Math.random() * 20),
+          retailer_cost: lastRoundData.retailer_cost + Math.floor(Math.random() * 15)
+        };
+        
+        // Add the new data to the game history
+        gameAllRolesData.push(newRoundData);
+        setGameAllRolesData(gameAllRolesData);
+        
+        // Update all player stats in the admin view
         mockCallbacks["updateAllStocks"]?.forEach(cb => 
           cb({
             stocks: {
-              factory: Math.floor(Math.random() * 20) + 5,
-              distributor: Math.floor(Math.random() * 20) + 5,
-              wholesaler: Math.floor(Math.random() * 20) + 5,
-              retailer: Math.floor(Math.random() * 20) + 5,
+              factory: newRoundData.factory_stock,
+              distributor: newRoundData.distributor_stock,
+              wholesaler: newRoundData.wholesaler_stock,
+              retailer: newRoundData.retailer_stock,
             },
             pendingOrders: {
               factory: Math.floor(Math.random() * 10),
@@ -93,13 +205,11 @@ const mockSocket = {
         
         // Also update the current player's stats
         mockCallbacks["updateStock"]?.forEach(cb => {
-          const prevCost = gameData[gameData.length - 1]?.cost || 0;
-          const newStock = Math.floor(Math.random() * 15) + 5;
-          const newCost = prevCost + Math.floor(Math.random() * 50);
-          cb({ stock: newStock, cost: newCost });
-          
-          // Add to game data for chart
-          setGameData(prev => [...prev, { round: prev.length + 1, stock: newStock, cost: newCost }]);
+          if (currentRole) {
+            const newStock = newRoundData[`${currentRole}_stock`];
+            const newCost = newRoundData[`${currentRole}_cost`];
+            cb({ stock: newStock, cost: newCost });
+          }
         });
       }, 800);
     }
@@ -111,17 +221,25 @@ const mockSocket = {
 // Store for callbacks
 const mockCallbacks: Record<string, Function[]> = {};
 
-// Mock initial game data for the chart
-const initialGameData = [
-  { round: 1, cost: 100, stock: 10 },
-  { round: 2, cost: 150, stock: 8 },
-  { round: 3, cost: 180, stock: 12 }
+// Mock initial game data for all roles
+let gameAllRolesData = [
+  { 
+    round: 1, 
+    factory_stock: 15,
+    distributor_stock: 12,
+    wholesaler_stock: 10,
+    retailer_stock: 8,
+    factory_cost: 100,
+    distributor_cost: 120,
+    wholesaler_cost: 150,
+    retailer_cost: 180
+  }
 ];
 
-// Track game data outside component for the mock socket to access
-let gameData = [...initialGameData];
-const setGameData = (updaterFn: (prev: any[]) => any[]) => {
-  gameData = updaterFn(gameData);
+let currentRole = "";
+
+const setGameAllRolesData = (updaterFn: (prev: any[]) => any[]) => {
+  gameAllRolesData = updaterFn(gameAllRolesData);
 };
 
 const GameView: React.FC = () => {
@@ -130,7 +248,8 @@ const GameView: React.FC = () => {
   const [role, setRole] = useState<string>("");
   const [stock, setStock] = useState<number>(10);
   const [cost, setCost] = useState<number>(0);
-  const [currentGameData, setCurrentGameData] = useState<any[]>(initialGameData);
+  const [currentGameData, setCurrentGameData] = useState<any[]>([]);
+  const [allRolesData, setAllRolesData] = useState<any[]>(gameAllRolesData);
   const [playerStocks, setPlayerStocks] = useState<Record<string, number>>({});
   const [pendingOrders, setPendingOrders] = useState<Record<string, number>>({});
   const [incomingDeliveries, setIncomingDeliveries] = useState<Record<string, number>>({});
@@ -142,7 +261,16 @@ const GameView: React.FC = () => {
     mockSocket.on("updateStock", (data: { stock: number; cost: number }) => {
       setStock(data.stock);
       setCost(data.cost);
-      setCurrentGameData(prev => [...prev, { round: prev.length + 1, cost: data.cost, stock: data.stock }]);
+      
+      // Update local game data for the player view
+      if (role) {
+        const lastData = currentGameData.length > 0 ? currentGameData[currentGameData.length - 1] : { round: 0 };
+        setCurrentGameData(prev => [...prev, { 
+          round: lastData.round + 1, 
+          cost: data.cost, 
+          stock: data.stock 
+        }]);
+      }
     });
 
     mockSocket.on("updateAllStocks", (data: { 
@@ -155,19 +283,20 @@ const GameView: React.FC = () => {
       setIncomingDeliveries(data.incomingDeliveries);
     });
 
-    // Keep the local gameData in sync
-    gameData = currentGameData;
+    // Keep track of all roles data
+    setAllRolesData(gameAllRolesData);
     
     return () => {
       // Cleanup listeners
       mockSocket.off();
     };
-  }, [currentGameData]);
+  }, [currentGameData, role]);
 
   const handleJoinGame = (newGameId: string, newRole: string) => {
     if (newGameId && newRole) {
       setGameId(newGameId);
       setRole(newRole);
+      currentRole = newRole;
       setView(newRole === "admin" ? "admin" : "player");
       mockSocket.emit("joinGame", { gameId: newGameId, role: newRole });
       
@@ -194,6 +323,18 @@ const GameView: React.FC = () => {
       title: "Next Round",
       description: "Advanced to the next round",
     });
+  };
+
+  // Show stock chart keys based on role or admin view
+  const getDataKeys = () => {
+    if (role === "admin") {
+      return [
+        "factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock",
+        "factory_cost", "distributor_cost", "wholesaler_cost", "retailer_cost"
+      ];
+    } else {
+      return ["stock", "cost"];
+    }
   };
 
   return (
@@ -236,11 +377,12 @@ const GameView: React.FC = () => {
             
             <TabsContent value="admin" className="mt-0 animate-scale-in">
               <AdminView 
-                gameData={currentGameData}
+                gameData={allRolesData}
                 playerStocks={playerStocks}
                 pendingOrders={pendingOrders}
                 incomingDeliveries={incomingDeliveries}
                 onNextRound={handleNextRound}
+                chartDataKeys={getDataKeys()}
               />
             </TabsContent>
           </Tabs>

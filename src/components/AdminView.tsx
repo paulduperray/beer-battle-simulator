@@ -1,11 +1,9 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import StockChart from "./StockChart";
-import { Package, Truck, ClipboardList, SkipForward } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { PlayCircle } from "lucide-react";
 
 interface AdminViewProps {
   gameData: any[];
@@ -13,128 +11,115 @@ interface AdminViewProps {
   pendingOrders: Record<string, number>;
   incomingDeliveries: Record<string, number>;
   onNextRound: () => void;
+  chartDataKeys?: string[];
 }
 
-const AdminView: React.FC<AdminViewProps> = ({
-  gameData,
-  playerStocks,
-  pendingOrders,
-  incomingDeliveries,
+const AdminView: React.FC<AdminViewProps> = ({ 
+  gameData, 
+  playerStocks, 
+  pendingOrders, 
+  incomingDeliveries, 
   onNextRound,
+  chartDataKeys = ["factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock"]
 }) => {
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleNextRound = () => {
-    setIsLoading(true);
-    // Simulate loading for better UX
-    setTimeout(() => {
-      onNextRound();
-      setIsLoading(false);
-    }, 800);
-  };
-
-  // Format player names for display
-  const formatPlayerName = (name: string) => {
-    return name.charAt(0).toUpperCase() + name.slice(1);
+  // Map roles to readable names
+  const roleTitles: Record<string, string> = {
+    "factory": "Factory",
+    "distributor": "Distributor", 
+    "wholesaler": "Wholesaler",
+    "retailer": "Retailer"
   };
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-4">
-        <Badge variant="outline" className="mb-2 animate-float">Admin</Badge>
-        <h2 className="text-2xl font-medium tracking-tight">Game Administration</h2>
-        <p className="text-muted-foreground">Monitor and control the beer distribution game</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-medium tracking-tight mb-1">Game Administration</h2>
+          <p className="text-muted-foreground">Monitor and control the game flow</p>
+        </div>
+        <Button 
+          onClick={onNextRound} 
+          className="beer-button flex items-center"
+        >
+          <PlayCircle className="mr-2 h-5 w-5" />
+          Next Round
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 mt-6">
+      <StockChart 
+        data={gameData} 
+        dataKeys={chartDataKeys}
+        title="Supply Chain Performance"
+        description="Track stock levels and costs across all roles"
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <SkipForward className="mr-2 h-5 w-5 text-primary" />
-              Game Control
-            </CardTitle>
-            <CardDescription>Advance the game to the next round</CardDescription>
+            <CardTitle>Current Stock Levels</CardTitle>
+            <CardDescription>Available inventory by role</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground mb-4">
-              All players will process their pending orders and receive deliveries.
-            </div>
-            <Button 
-              onClick={handleNextRound} 
-              className="beer-button w-full sm:w-auto" 
-              disabled={isLoading}
-            >
-              {isLoading ? "Processing..." : "Advance to Next Round"}
-            </Button>
+            <ul className="divide-y">
+              {Object.entries(playerStocks).map(([role, stock]) => (
+                <li key={role} className="py-3 flex justify-between items-center">
+                  <span className="font-medium">{roleTitles[role] || role}</span>
+                  <div className="flex items-center">
+                    <span className={`px-3 py-1 rounded-full text-sm ${
+                      stock < 5 ? 'bg-red-100 text-red-800' : 
+                      stock > 15 ? 'bg-green-100 text-green-800' : 
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {stock} units
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-base">
-                <Package className="mr-2 h-5 w-5 text-primary" />
-                Inventory Levels
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 py-0">
-              <ul className="divide-y divide-border/60">
-                {Object.entries(playerStocks).map(([player, stock]) => (
-                  <li key={player} className="py-2 flex justify-between items-center">
-                    <span className="text-sm">{formatPlayerName(player)}</span>
-                    <Badge variant={stock < 5 ? "destructive" : "outline"}>
-                      {stock} units
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-base">
-                <ClipboardList className="mr-2 h-5 w-5 text-primary" />
-                Pending Orders
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 py-0">
-              <ul className="divide-y divide-border/60">
-                {Object.entries(pendingOrders).map(([player, order]) => (
-                  <li key={player} className="py-2 flex justify-between items-center">
-                    <span className="text-sm">{formatPlayerName(player)}</span>
-                    <Badge variant="secondary">
+        <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Pending Orders</CardTitle>
+            <CardDescription>Orders waiting to be fulfilled</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {Object.entries(pendingOrders).map(([role, order]) => (
+                <li key={role} className="py-3 flex justify-between items-center">
+                  <span className="font-medium">{roleTitles[role] || role}</span>
+                  <div className="flex items-center">
+                    <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm">
                       {order} units
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
 
-          <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-base">
-                <Truck className="mr-2 h-5 w-5 text-primary" />
-                Incoming Deliveries
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 py-0">
-              <ul className="divide-y divide-border/60">
-                {Object.entries(incomingDeliveries).map(([player, delivery]) => (
-                  <li key={player} className="py-2 flex justify-between items-center">
-                    <span className="text-sm">{formatPlayerName(player)}</span>
-                    <Badge variant="outline" className="bg-primary/10">
+        <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Incoming Deliveries</CardTitle>
+            <CardDescription>Shipments on their way</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {Object.entries(incomingDeliveries).map(([role, delivery]) => (
+                <li key={role} className="py-3 flex justify-between items-center">
+                  <span className="font-medium">{roleTitles[role] || role}</span>
+                  <div className="flex items-center">
+                    <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-800 text-sm">
                       {delivery} units
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-
-        <StockChart data={gameData} />
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
