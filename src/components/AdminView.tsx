@@ -3,7 +3,8 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import StockChart from "./StockChart";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle, Clock, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface AdminViewProps {
   gameData: any[];
@@ -30,6 +31,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     "retailer": "Retailer"
   };
 
+  // Get current round number
+  const currentRound = gameData.length;
+
   return (
     <div className="animate-fade-in">
       <div className="flex justify-between items-center mb-6">
@@ -37,13 +41,29 @@ const AdminView: React.FC<AdminViewProps> = ({
           <h2 className="text-2xl font-medium tracking-tight mb-1">Game Administration</h2>
           <p className="text-muted-foreground">Monitor and control the game flow</p>
         </div>
-        <Button 
-          onClick={onNextRound} 
-          className="beer-button flex items-center"
-        >
-          <PlayCircle className="mr-2 h-5 w-5" />
-          Next Round
-        </Button>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Round {currentRound}
+          </Badge>
+          <Button 
+            onClick={onNextRound} 
+            className="beer-button flex items-center"
+          >
+            <PlayCircle className="mr-2 h-5 w-5" />
+            Next Round
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+        <div className="flex items-start">
+          <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+          <div>
+            <h4 className="font-medium text-amber-800">Order Delay System</h4>
+            <p className="text-sm text-amber-700">Orders take 2 rounds to be delivered. Pending orders are processed automatically when advancing rounds.</p>
+          </div>
+        </div>
       </div>
 
       <StockChart 

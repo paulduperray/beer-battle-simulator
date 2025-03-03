@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -78,16 +79,75 @@ const mockSocket = {
     
     if (event === "placeOrder") {
       setTimeout(() => {
-        // Simulate the impact of an order on stock levels
-        // When a role places an order, it affects their stock and the stock of the next upstream role
+        // When a role places an order, add it to pendingOrders with a 2-round delay
         const orderAmount = data.order;
         const role = data.role;
         
+        // Add the order to the pendingOrders array with the target delivery round
+        const targetDeliveryRound = gameAllRolesData.length + 2; // Deliver after 2 rounds
+        
+        // Determine the source and destination for the order
+        let source, destination;
+        if (role === "retailer") {
+          source = "wholesaler";
+          destination = "retailer";
+        } else if (role === "wholesaler") {
+          source = "distributor";
+          destination = "wholesaler";
+        } else if (role === "distributor") {
+          source = "factory";
+          destination = "distributor";
+        } else if (role === "factory") {
+          source = "production";
+          destination = "factory";
+        }
+        
+        // Add the pending order to our buffer
+        pendingOrders.push({
+          id: `order-${pendingOrderId++}`,
+          round: gameAllRolesData.length,
+          deliveryRound: targetDeliveryRound,
+          amount: orderAmount,
+          source: source,
+          destination: destination,
+          status: "pending"
+        });
+        
+        // Get latest data (for display purposes only - actual stock update will happen later)
+        const lastRoundData = { ...gameAllRolesData[gameAllRolesData.length - 1] };
+        
+        // Update the current player's view with pending order info
+        mockCallbacks["updateStock"]?.forEach(cb => {
+          if (role) {
+            // No immediate stock change, only cost increases to reflect the order placement
+            const newCost = lastRoundData[`${role}_cost`] + (orderAmount * getCostMultiplier(role));
+            cb({ stock: lastRoundData[`${role}_stock`], cost: newCost });
+            
+            // Update cost in the data
+            const updatedLastRound = { ...lastRoundData };
+            updatedLastRound[`${role}_cost`] = newCost;
+            
+            // Update the last round data with the new cost
+            gameAllRolesData[gameAllRolesData.length - 1] = updatedLastRound;
+            
+            // Fix: Using a callback function that returns the new state
+            setGameAllRolesData(() => [...gameAllRolesData]);
+          }
+        });
+        
+        // Update the admin view with pending orders information
+        updateAdminView();
+        
+      }, 500);
+    }
+    
+    if (event === "nextRound") {
+      setTimeout(() => {
         // Get latest data
         const lastRoundData = { ...gameAllRolesData[gameAllRolesData.length - 1] };
         const nextRound = gameAllRolesData.length + 1;
         
-        // Create updated stock data for all roles
+        // Create new round data as a starting point
         const newRoundData = {
           round: nextRound,
           factory_stock: lastRoundData.factory_stock,
@@ -100,111 +160,43 @@ const mockSocket = {
           retailer_cost: lastRoundData.retailer_cost
         };
         
-        // Update stock based on the role that placed the order
-        // This is a simplified model - in a real game, these would be more complex
-        if (role === "retailer") {
-          // Retailer order affects retailer's stock (increase) and wholesaler's stock (decrease)
-          newRoundData.retailer_stock += orderAmount;
-          newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock - orderAmount);
-          newRoundData.retailer_cost += orderAmount * 5; // Cost of ordering
-        } else if (role === "wholesaler") {
-          newRoundData.wholesaler_stock += orderAmount;
-          newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock - orderAmount);
-          newRoundData.wholesaler_cost += orderAmount * 4;
-        } else if (role === "distributor") {
-          newRoundData.distributor_stock += orderAmount;
-          newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock - orderAmount);
-          newRoundData.distributor_cost += orderAmount * 3;
-        } else if (role === "factory") {
-          newRoundData.factory_stock += orderAmount;
-          newRoundData.factory_cost += orderAmount * 2; // Production cost
-        }
+        // Process orders that are ready for delivery in this round
+        const ordersToProcess = pendingOrders.filter(order => order.deliveryRound === nextRound && order.status === "pending");
         
-        // Add the new data to the game history
-        gameAllRolesData.push(newRoundData);
-        // Fix: Using a callback function that returns the new state
-        setGameAllRolesData(() => [...gameAllRolesData]);
-        
-        // Update the current player's view
-        mockCallbacks["updateStock"]?.forEach(cb => {
-          const newStock = newRoundData[`${role}_stock`];
-          const newCost = newRoundData[`${role}_cost`];
-          cb({ stock: newStock, cost: newCost });
+        // Process each order that is due in this round
+        ordersToProcess.forEach(order => {
+          // Update stocks based on the order
+          if (order.destination === "retailer") {
+            newRoundData.retailer_stock += order.amount;
+            newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock - order.amount);
+          } else if (order.destination === "wholesaler") {
+            newRoundData.wholesaler_stock += order.amount;
+            newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock - order.amount);
+          } else if (order.destination === "distributor") {
+            newRoundData.distributor_stock += order.amount;
+            newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock - order.amount);
+          } else if (order.destination === "factory") {
+            newRoundData.factory_stock += order.amount; // Production creates new stock
+          }
+          
+          // Mark the order as completed
+          order.status = "completed";
         });
         
-        // If admin is connected, update all stocks
-        mockCallbacks["updateAllStocks"]?.forEach(cb => 
-          cb({
-            stocks: {
-              factory: newRoundData.factory_stock,
-              distributor: newRoundData.distributor_stock,
-              wholesaler: newRoundData.wholesaler_stock,
-              retailer: newRoundData.retailer_stock,
-            },
-            pendingOrders: {
-              factory: Math.floor(Math.random() * 10),
-              distributor: Math.floor(Math.random() * 10),
-              wholesaler: Math.floor(Math.random() * 10),
-              retailer: Math.floor(Math.random() * 10),
-            },
-            incomingDeliveries: {
-              factory: Math.floor(Math.random() * 10),
-              distributor: Math.floor(Math.random() * 10),
-              wholesaler: Math.floor(Math.random() * 10),
-              retailer: Math.floor(Math.random() * 10),
-            }
-          })
-        );
-      }, 500);
-    }
-    
-    if (event === "nextRound") {
-      setTimeout(() => {
-        // Get latest data
-        const lastRoundData = { ...gameAllRolesData[gameAllRolesData.length - 1] };
-        const nextRound = gameAllRolesData.length + 1;
-        
-        // Simulate random changes for the next round
-        const newRoundData = {
-          round: nextRound,
-          factory_stock: Math.max(0, lastRoundData.factory_stock + Math.floor(Math.random() * 10) - 5),
-          distributor_stock: Math.max(0, lastRoundData.distributor_stock + Math.floor(Math.random() * 8) - 4),
-          wholesaler_stock: Math.max(0, lastRoundData.wholesaler_stock + Math.floor(Math.random() * 6) - 3),
-          retailer_stock: Math.max(0, lastRoundData.retailer_stock + Math.floor(Math.random() * 4) - 2),
-          factory_cost: lastRoundData.factory_cost + Math.floor(Math.random() * 30),
-          distributor_cost: lastRoundData.distributor_cost + Math.floor(Math.random() * 25),
-          wholesaler_cost: lastRoundData.wholesaler_cost + Math.floor(Math.random() * 20),
-          retailer_cost: lastRoundData.retailer_cost + Math.floor(Math.random() * 15)
-        };
+        // Add random variations to make the game more interesting
+        newRoundData.factory_stock = Math.max(0, newRoundData.factory_stock + Math.floor(Math.random() * 6) - 2);
+        newRoundData.distributor_stock = Math.max(0, newRoundData.distributor_stock + Math.floor(Math.random() * 4) - 2);
+        newRoundData.wholesaler_stock = Math.max(0, newRoundData.wholesaler_stock + Math.floor(Math.random() * 4) - 2);
+        newRoundData.retailer_stock = Math.max(0, newRoundData.retailer_stock + Math.floor(Math.random() * 4) - 2);
         
         // Add the new data to the game history
         gameAllRolesData.push(newRoundData);
+        
         // Fix: Using a callback function that returns the new state
         setGameAllRolesData(() => [...gameAllRolesData]);
         
-        // Update all player stats in the admin view
-        mockCallbacks["updateAllStocks"]?.forEach(cb => 
-          cb({
-            stocks: {
-              factory: newRoundData.factory_stock,
-              distributor: newRoundData.distributor_stock,
-              wholesaler: newRoundData.wholesaler_stock,
-              retailer: newRoundData.retailer_stock,
-            },
-            pendingOrders: {
-              factory: Math.floor(Math.random() * 10),
-              distributor: Math.floor(Math.random() * 10),
-              wholesaler: Math.floor(Math.random() * 10),
-              retailer: Math.floor(Math.random() * 10),
-            },
-            incomingDeliveries: {
-              factory: Math.floor(Math.random() * 10),
-              distributor: Math.floor(Math.random() * 10),
-              wholesaler: Math.floor(Math.random() * 10),
-              retailer: Math.floor(Math.random() * 10),
-            }
-          })
-        );
+        // Update the admin view with the latest data
+        updateAdminView();
         
         // Also update the current player's stats
         mockCallbacks["updateStock"]?.forEach(cb => {
@@ -219,6 +211,67 @@ const mockSocket = {
     
     return mockSocket;
   }
+};
+
+// Helper function to get cost multiplier based on role
+const getCostMultiplier = (role: string): number => {
+  switch(role) {
+    case "factory": return 2;
+    case "distributor": return 3;
+    case "wholesaler": return 4;
+    case "retailer": return 5;
+    default: return 1;
+  }
+};
+
+// Function to update the admin view with latest data
+const updateAdminView = () => {
+  const lastRoundData = gameAllRolesData[gameAllRolesData.length - 1];
+  
+  // Count pending orders for each role
+  const pendingOrdersByRole = {
+    factory: 0,
+    distributor: 0,
+    wholesaler: 0,
+    retailer: 0
+  };
+  
+  // Count incoming deliveries for each role
+  const incomingDeliveriesByRole = {
+    factory: 0,
+    distributor: 0,
+    wholesaler: 0,
+    retailer: 0
+  };
+  
+  // Process pending orders to get counts
+  pendingOrders.forEach(order => {
+    if (order.status === "pending") {
+      // Increment pending orders for the source
+      if (order.source !== "production" && pendingOrdersByRole[order.source] !== undefined) {
+        pendingOrdersByRole[order.source] += order.amount;
+      }
+      
+      // Increment incoming deliveries for the destination
+      if (incomingDeliveriesByRole[order.destination] !== undefined) {
+        incomingDeliveriesByRole[order.destination] += order.amount;
+      }
+    }
+  });
+  
+  // Update the Admin view with data for all roles
+  mockCallbacks["updateAllStocks"]?.forEach(cb => 
+    cb({
+      stocks: {
+        factory: lastRoundData.factory_stock,
+        distributor: lastRoundData.distributor_stock,
+        wholesaler: lastRoundData.wholesaler_stock,
+        retailer: lastRoundData.retailer_stock,
+      },
+      pendingOrders: pendingOrdersByRole,
+      incomingDeliveries: incomingDeliveriesByRole
+    })
+  );
 };
 
 // Store for callbacks
@@ -238,6 +291,18 @@ let gameAllRolesData = [
     retailer_cost: 180
   }
 ];
+
+// Initialize pending orders array and ID counter
+let pendingOrders: Array<{
+  id: string;
+  round: number;
+  deliveryRound: number;
+  amount: number;
+  source: string;
+  destination: string;
+  status: "pending" | "completed";
+}> = [];
+let pendingOrderId = 1;
 
 let currentRole = "";
 

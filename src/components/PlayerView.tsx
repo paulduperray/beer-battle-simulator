@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Package, ArrowDown, ArrowUp, TrendingUp } from "lucide-react";
+import { Package, ArrowDown, ArrowUp, TrendingUp, Clock } from "lucide-react";
 
 interface PlayerViewProps {
   role: string;
@@ -115,27 +115,33 @@ const PlayerView: React.FC<PlayerViewProps> = ({ role, stock, cost, onPlaceOrder
       <Card className="mt-6 beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Place New Order</CardTitle>
-          <CardDescription>Order inventory for the next round</CardDescription>
+          <CardDescription>Order inventory for the next round (delivery after 2 rounds)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Input
-                type="number"
-                min="0"
-                placeholder="Enter order amount"
-                value={order || ""}
-                onChange={handleOrderChange}
-                className="input-field"
-              />
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center bg-secondary/30 rounded-md px-3 py-2">
+              <Clock className="h-4 w-4 text-muted-foreground mr-2" />
+              <span className="text-sm text-muted-foreground">Orders will arrive after 2 rounds</span>
             </div>
-            <Button 
-              onClick={handleSubmit} 
-              className="beer-button" 
-              disabled={order <= 0 || isSubmitting}
-            >
-              {isSubmitting ? "Submitting..." : "Place Order"}
-            </Button>
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Enter order amount"
+                  value={order || ""}
+                  onChange={handleOrderChange}
+                  className="input-field"
+                />
+              </div>
+              <Button 
+                onClick={handleSubmit} 
+                className="beer-button" 
+                disabled={order <= 0 || isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Place Order"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
