@@ -191,13 +191,14 @@ export const useGameState = () => {
       
       console.log(`Placing order in game ${gameId}, current round: ${game.current_round}`);
       
-      // Place the order
+      // Place the order with delivery_round parameter
       const order = await placeOrder(
         gameId,
         game.current_round,
         orderAmount,
         source,
-        destination
+        destination,
+        game.current_round + 1 // Set delivery_round to next round
       );
       
       if (order) {

@@ -6,9 +6,10 @@ export async function placeOrder(
   round: number,
   quantity: number,
   source: string,
-  destination: string
+  destination: string,
+  delivery_round: number
 ) {
-  console.log(`Placing order: ${quantity} units from ${source} to ${destination} in game ${gameId}, round ${round}`);
+  console.log(`Placing order: Game ${gameId}, Round ${round}, Quantity ${quantity}, From ${source} to ${destination}, Delivery in round ${delivery_round}`);
   
   // Return mock data if Supabase is not configured
   if (!isSupabaseConfigured) {
@@ -20,27 +21,22 @@ export async function placeOrder(
       quantity: quantity,
       source: source,
       destination: destination,
-      fulfilled: false,
+      delivery_round: delivery_round,
+      created_at: new Date().toISOString(),
     };
   }
 
   // Real Supabase implementation
   try {
-    // Calculate delivery round (current round + 2)
-    const deliveryRound = round + 2;
-    
-    console.log(`Inserting order into pending_orders table with delivery round ${deliveryRound}`);
-    
     const { data, error } = await supabase
       .from('pending_orders')
       .insert({
         game_id: gameId,
         round: round,
-        delivery_round: deliveryRound,
         quantity: quantity,
         source: source,
         destination: destination,
-        status: 'pending',
+        delivery_round: delivery_round
       })
       .select('*')
       .single();
@@ -50,63 +46,103 @@ export async function placeOrder(
       throw error;
     }
     
-    console.log('Order successfully placed:', data);
+    console.log('Order placed successfully:', data);
     return data;
   } catch (error) {
-    console.error('Error placing order:', error);
+    console.error('Error in placeOrder function:', error);
     return null;
   }
 }
 
-export async function updateCosts(
-  gameId: string,
-  round: number,
-  role: string,
-  costIncrease: number
-) {
-  console.log(`Updating costs for ${role} in game ${gameId}, round ${round}, increase by ${costIncrease}`);
+export async function processOrders(gameId: string, round: number) {
+  console.log(`Processing orders for game ${gameId}, round ${round}`);
   
-  // Mock implementation if Supabase is not configured
+  // Return mock data if Supabase is not configured
   if (!isSupabaseConfigured) {
-    console.warn('Mock cost update because Supabase is not configured');
+    console.warn('Processing mock orders because Supabase is not configured');
     return true;
   }
 
   // Real Supabase implementation
   try {
-    // First, get the current round data
-    const { data: currentRound, error: fetchError } = await supabase
+    // Get all pending orders that should be delivered in this round
+    const { data: orders, error: fetchError } = await supabase
+      .from('pending_orders')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('delivery_round', round);
+
+    if (fetchError) throw fetchError;
+    
+    console.log(`Found ${orders?.length || 0} orders to process for round ${round}`);
+
+    // If no orders to process, return success
+    if (!orders || orders.length === 0) {
+      return true;
+    }
+
+    // Process each order
+    for (const order of orders) {
+      // Update the stock levels based on the order
+      await updateStockLevels(gameId, round, order.source, order.destination, order.quantity);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error processing orders:', error);
+    return false;
+  }
+}
+
+async function updateStockLevels(
+  gameId: string,
+  round: number,
+  source: string,
+  destination: string,
+  quantity: number
+) {
+  console.log(`Updating stock levels: Game ${gameId}, Round ${round}, From ${source} to ${destination}, Quantity ${quantity}`);
+  
+  try {
+    // Get the current game round
+    const { data: gameRound, error: fetchError } = await supabase
       .from('game_rounds')
-      .select(`*`)
+      .select('*')
       .eq('game_id', gameId)
       .eq('round', round)
       .single();
 
-    if (fetchError) {
-      console.error('Error fetching current round data:', fetchError);
-      throw fetchError;
+    if (fetchError) throw fetchError;
+
+    // Skip "production" source as it's not a real entity
+    if (source !== 'production') {
+      // Decrement source stock
+      const sourceColumn = `${source}_stock`;
+      const newSourceStock = Math.max(0, (gameRound[sourceColumn] || 0) - quantity);
+      
+      const { error: updateSourceError } = await supabase
+        .from('game_rounds')
+        .update({ [sourceColumn]: newSourceStock })
+        .eq('id', gameRound.id);
+
+      if (updateSourceError) throw updateSourceError;
     }
 
-    const costKey = `${role}_cost`;
-    const newCost = (currentRound[costKey] || 0) + costIncrease;
+    // Increment destination stock
+    const destinationColumn = `${destination}_stock`;
+    const newDestinationStock = (gameRound[destinationColumn] || 0) + quantity;
     
-    console.log(`Updating ${costKey} from ${currentRound[costKey]} to ${newCost}`);
-
-    // Update the cost
-    const { error: updateError } = await supabase
+    const { error: updateDestError } = await supabase
       .from('game_rounds')
-      .update({ [costKey]: newCost })
-      .eq('id', currentRound.id);
+      .update({ [destinationColumn]: newDestinationStock })
+      .eq('id', gameRound.id);
 
-    if (updateError) {
-      console.error('Error updating costs:', updateError);
-      throw updateError;
-    }
-    
-    console.log('Costs successfully updated');
+    if (updateDestError) throw updateDestError;
+
+    console.log(`Stock levels updated successfully: ${source} -> ${destination}, Quantity ${quantity}`);
     return true;
   } catch (error) {
-    console.error('Error updating costs:', error);
+    console.error('Error updating stock levels:', error);
     return false;
   }
 }
