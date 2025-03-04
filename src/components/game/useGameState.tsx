@@ -119,42 +119,51 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
-      // Handle admin case - create a new game if it doesn't exist
-      if (newRole === "admin") {
-        console.log(`Creating new game with code: ${newGameCode}`);
-        const game = await createGame(newGameCode);
-        if (game) {
-          setGameId(game.id);
-          setGameCode(game.game_code);
-          setRole(newRole);
-          setView("admin");
-          
-          toast("Game created successfully!");
-        } else {
-          throw new Error("Failed to create game");
-        }
-      } else {
-        // For players, join an existing game
-        console.log(`Joining game with code: ${newGameCode}, role: ${newRole}`);
-        const { game, player } = await joinGame(newGameCode, newRole);
+      // First try to join an existing game regardless of role
+      console.log(`Joining game with code: ${newGameCode}, role: ${newRole}`);
+      const { game, player } = await joinGame(newGameCode, newRole);
+      
+      if (game) {
+        // Game found, proceed with joining
+        setGameId(game.id);
+        setGameCode(game.game_code);
+        setRole(newRole);
         
-        if (game && player) {
-          setGameId(game.id);
-          setGameCode(game.game_code);
-          setRole(newRole);
-          setView("player"); // Changement direct vers la vue du joueur
-          
-          toast(`Joined game as ${newRole}`);
+        // Set view based on role
+        if (newRole === "admin") {
+          setView("admin");
+          toast(`Joined game as admin`);
         } else {
-          throw new Error("Failed to join game");
+          setView("player");
+          toast(`Joined game as ${newRole}`);
+        }
+        
+        // Reset loading counter after a successful connection
+        setLoadingCount(0);
+      } else {
+        // Game not found, create new game if admin
+        if (newRole === "admin") {
+          console.log(`Creating new game with code: ${newGameCode}`);
+          const newGame = await createGame(newGameCode);
+          if (newGame) {
+            setGameId(newGame.id);
+            setGameCode(newGame.game_code);
+            setRole(newRole);
+            setView("admin");
+            
+            toast("Game created successfully!");
+            // Reset loading counter
+            setLoadingCount(0);
+          } else {
+            throw new Error("Failed to create game");
+          }
+        } else {
+          throw new Error(`Game with code ${newGameCode} not found`);
         }
       }
-      
-      // Reset loading counter after a successful connection
-      setLoadingCount(0);
     } catch (error) {
       console.error("Error joining game:", error);
-      toast("Failed to join game. Please check the game code.");
+      toast.error("Failed to join game. Please check the game code.");
     } finally {
       setLoading(false);
     }

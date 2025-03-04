@@ -1,3 +1,4 @@
+
 import { supabase } from '../client';
 
 export async function createGame(gameCode: string) {
@@ -37,8 +38,14 @@ export async function joinGame(gameCode: string, role: string) {
 
     console.log(`Found game with ID ${gameData.id} for code ${gameCode}`);
 
-    // Create player entry - no longer checking if role exists
-    // This allows multiple players with the same role
+    // For the admin role, we need to check if the game exists but don't need to create a new player
+    if (role === 'admin') {
+      // Return the game data directly without creating a new player
+      console.log(`Admin joining game ${gameData.id} without creating player entry`);
+      return { game: gameData, player: { role: 'admin' } };
+    }
+
+    // For other roles, create a player entry - this allows multiple players with the same role
     const { data: playerData, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -50,11 +57,26 @@ export async function joinGame(gameCode: string, role: string) {
 
     if (playerError) {
       console.error('Error creating player:', playerError);
-      return { game: gameData, player: null };
+      
+      // If error occurs (which might happen if unique constraint exists),
+      // we'll try to find if a player with this role already exists
+      const { data: existingPlayer, error: findError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', gameData.id)
+        .eq('role', role)
+        .single();
+        
+      if (findError) {
+        console.error('Error finding existing player:', findError);
+        return { game: gameData, player: null };
+      }
+      
+      console.log(`Found existing player with role ${role} for game ${gameData.id}`);
+      return { game: gameData, player: existingPlayer };
     }
 
     console.log(`Created player with role ${role} for game ${gameData.id}`);
-
     return { game: gameData, player: playerData };
   } catch (error) {
     console.error('Error in joinGame function:', error);
