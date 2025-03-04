@@ -1,5 +1,5 @@
+
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
 import { toast } from "sonner";
 import { 
   createGame, 
@@ -37,8 +37,6 @@ export const useGameState = () => {
   const [incomingDeliveries, setIncomingDeliveries] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState<boolean>(false);
   
-  const { toast } = useToast();
-
   // Function to load game data based on role
   const loadGameData = async () => {
     if (!gameId) return;
@@ -214,7 +212,6 @@ export const useGameState = () => {
       toast({
         title: "Error",
         description: "Failed to place order. Please try again.",
-        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -245,7 +242,6 @@ export const useGameState = () => {
       toast({
         title: "Error",
         description: "Failed to advance to next round",
-        variant: "destructive"
       });
     } finally {
       setLoading(false);

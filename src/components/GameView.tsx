@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useGameState } from "./game/useGameState";
 import useGameSubscription from "./game/useGameSubscription";
 import GameHeader from "./game/GameHeader";
@@ -34,6 +34,15 @@ const GameView: React.FC = () => {
     role,
     loadGameData
   });
+
+  // Automatically set the view based on the role when it changes
+  useEffect(() => {
+    if (role === "admin") {
+      setView("admin");
+    } else if (role && role !== "admin") {
+      setView("player");
+    }
+  }, [role, setView]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
