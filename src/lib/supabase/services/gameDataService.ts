@@ -1,4 +1,3 @@
-
 import { supabase, isSupabaseConfigured } from '../client';
 
 export async function getGameData(gameId: string) {
@@ -167,5 +166,56 @@ export async function getAdminViewData(gameId: string) {
   } catch (error) {
     console.error('Error getting admin view data:', error);
     return null;
+  }
+}
+
+export async function updateCosts(gameId: string, round: number, role: string, costIncrease: number) {
+  // Return mock data if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('Mock cost update because Supabase is not configured');
+    return true;
+  }
+
+  // Real Supabase implementation
+  try {
+    console.log(`Updating costs for game ${gameId}, round ${round}, role ${role}, increase by ${costIncrease}`);
+    
+    // Get the current round data
+    const { data: roundData, error: roundError } = await supabase
+      .from('game_rounds')
+      .select(`${role}_cost`)
+      .eq('game_id', gameId)
+      .eq('round', round)
+      .single();
+
+    if (roundError) {
+      console.error('Error fetching round data:', roundError);
+      throw roundError;
+    }
+
+    const currentCost = roundData[`${role}_cost`] || 0;
+    const newCost = currentCost + costIncrease;
+
+    console.log(`Updating ${role}_cost from ${currentCost} to ${newCost}`);
+
+    // Update the cost in the database
+    const updateData = {};
+    updateData[`${role}_cost`] = newCost;
+
+    const { error: updateError } = await supabase
+      .from('game_rounds')
+      .update(updateData)
+      .eq('game_id', gameId)
+      .eq('round', round);
+
+    if (updateError) {
+      console.error('Error updating costs:', updateError);
+      throw updateError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating costs:', error);
+    return false;
   }
 }
