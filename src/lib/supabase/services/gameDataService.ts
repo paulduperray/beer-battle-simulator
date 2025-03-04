@@ -109,7 +109,7 @@ export async function getAdminViewData(gameId: string) {
 
     console.log('Latest round fetched:', latestRound);
 
-    // Get pending orders
+    // Get pending orders - now getting all unfulfilled orders to show in real-time
     const { data: pendingOrders, error: ordersError } = await supabase
       .from('pending_orders')
       .select('*')
@@ -147,13 +147,13 @@ export async function getAdminViewData(gameId: string) {
       retailer: 0,
     };
 
-    // Process pending orders
+    // Process pending orders - ensure we count all unfulfilled orders
     pendingOrders?.forEach(order => {
       if (order.destination in ordersByRole) {
         ordersByRole[order.destination] += order.quantity;
       }
       
-      if (order.source in deliveriesByRole) {
+      if (order.source in deliveriesByRole && order.source !== 'production') {
         deliveriesByRole[order.source] += order.quantity;
       }
     });

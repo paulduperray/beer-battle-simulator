@@ -36,7 +36,7 @@ const GameView: React.FC = () => {
     loadGameData
   });
 
-  // Automatiquement rediriger vers la vue appropriée après connexion
+  // Automatically redirect to the appropriate view after login
   useEffect(() => {
     if (role === "admin") {
       setView("admin");

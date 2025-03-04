@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { 
@@ -38,16 +37,16 @@ export const useGameState = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingCount, setLoadingCount] = useState<number>(0);
   
-  // Function to load game data based on role - avec des mécanismes pour éviter les chargements infinis
+  // Function to load game data based on role - with mechanisms to avoid infinite loading
   const loadGameData = useCallback(async () => {
     if (!gameId) return;
     
     try {
-      // Protection contre un chargement constant
+      // Protection against constant loading
       setLoadingCount(prev => {
         if (prev > 5) {
-          console.log("Trop de tentatives de chargement consécutives, on interrompt");
-          return 0; // Reset le compteur
+          console.log("Too many consecutive loading attempts, interrupting");
+          return 0; // Reset counter
         }
         return prev + 1;
       });
@@ -63,7 +62,7 @@ export const useGameState = () => {
         if (data) {
           setAllRolesData(data.rounds || []);
           
-          // Also load current stocks and orders
+          // Also load current stocks and orders - this is the part that needs to update in real-time
           const adminData = await getAdminViewData(gameId);
           console.log("Admin view data:", adminData);
           
@@ -105,7 +104,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error loading game data:", error);
-      toast("Error loading game data");
+      toast.error("Error loading game data");
     } finally {
       setLoading(false);
     }
@@ -151,7 +150,7 @@ export const useGameState = () => {
         }
       }
       
-      // Reset loading counter après une connexion réussie
+      // Reset loading counter after a successful connection
       setLoadingCount(0);
     } catch (error) {
       console.error("Error joining game:", error);

@@ -1,6 +1,7 @@
 
 import { useEffect } from "react";
-import { subscribeToGameUpdates } from "@/lib/supabase/gameService";
+import { subscribeToGameUpdates } from "@/lib/supabase/services/realtimeService";
+import { toast } from "sonner";
 
 interface UseGameSubscriptionProps {
   gameId: string;
@@ -29,6 +30,9 @@ export const useGameSubscription = ({
       // For important tables, show a more specific message
       if (payload.table === 'pending_orders') {
         console.log(`Order update detected: ${payload.eventType} operation`);
+        if (role === 'admin' && payload.eventType === 'INSERT') {
+          toast.info("New order placed by a player");
+        }
       } else if (payload.table === 'game_rounds') {
         console.log(`Game round update detected: ${payload.eventType} operation`);
       }
