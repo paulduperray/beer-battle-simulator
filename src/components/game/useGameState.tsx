@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { 
   createGame, 
   joinGame, 
@@ -91,11 +92,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error loading game data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load game data",
-        variant: "destructive"
-      });
+      toast("Error loading game data");
     } finally {
       setLoading(false);
     }
@@ -109,6 +106,7 @@ export const useGameState = () => {
       
       // Handle admin case - create a new game if it doesn't exist
       if (newRole === "admin") {
+        console.log(`Creating new game with code: ${newGameCode}`);
         const game = await createGame(newGameCode);
         if (game) {
           setGameId(game.id);
@@ -116,15 +114,13 @@ export const useGameState = () => {
           setRole(newRole);
           setView("admin");
           
-          toast({
-            title: "Game Created",
-            description: `You created game ${newGameCode} as ${newRole}`,
-          });
+          toast(`Game ${newGameCode} created successfully!`);
         } else {
           throw new Error("Failed to create game");
         }
       } else {
         // For players, join an existing game
+        console.log(`Joining game with code: ${newGameCode}, role: ${newRole}`);
         const { game, player } = await joinGame(newGameCode, newRole);
         
         if (game && player) {
@@ -133,21 +129,14 @@ export const useGameState = () => {
           setRole(newRole);
           setView("player");
           
-          toast({
-            title: "Joined Game",
-            description: `You joined game ${newGameCode} as ${newRole}`,
-          });
+          toast(`Joined game ${newGameCode} as ${newRole}`);
         } else {
           throw new Error("Failed to join game");
         }
       }
     } catch (error) {
       console.error("Error joining game:", error);
-      toast({
-        title: "Error",
-        description: "Failed to join game. Please check the game code and try again.",
-        variant: "destructive"
-      });
+      toast("Failed to join game. Please check the game code.");
     } finally {
       setLoading(false);
     }

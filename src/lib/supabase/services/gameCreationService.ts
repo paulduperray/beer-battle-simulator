@@ -15,6 +15,8 @@ export async function createGame(gameCode: string) {
 
   // Real Supabase implementation
   try {
+    console.log(`Creating game with code: ${gameCode}`);
+    
     const { data, error } = await supabase
       .from('games')
       .insert({
@@ -24,7 +26,12 @@ export async function createGame(gameCode: string) {
       .select('*')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating game:', error);
+      throw error;
+    }
+    
+    console.log('Game created successfully:', data);
     return data;
   } catch (error) {
     console.error('Error creating game:', error);
@@ -59,7 +66,12 @@ export async function joinGame(gameCode: string, role: string) {
       .eq('game_code', gameCode)
       .single();
 
-    if (gameError) throw gameError;
+    if (gameError) {
+      console.error('Error finding game:', gameError);
+      throw gameError;
+    }
+
+    console.log(`Found game with ID ${game.id} for code ${gameCode}`);
 
     // Then, create a player
     const { data: player, error: playerError } = await supabase
@@ -71,7 +83,12 @@ export async function joinGame(gameCode: string, role: string) {
       .select('*')
       .single();
 
-    if (playerError) throw playerError;
+    if (playerError) {
+      console.error('Error creating player:', playerError);
+      throw playerError;
+    }
+
+    console.log(`Created player with role ${role} for game ${game.id}`);
 
     return { game, player };
   } catch (error) {
