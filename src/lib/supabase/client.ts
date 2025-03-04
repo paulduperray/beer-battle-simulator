@@ -24,4 +24,6 @@ if (!hasCredentials) {
   console.warn(
     'Supabase credentials are missing. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables. The application will run in offline mode with limited functionality.'
   );
+} else {
+  console.log('Supabase is configured with URL:', supabaseUrl.substring(0, 15) + '...');
 }

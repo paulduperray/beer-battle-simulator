@@ -45,15 +45,20 @@ export const useGameState = () => {
     
     try {
       setLoading(true);
+      console.log(`Loading game data for game ID: ${gameId}, role: ${role}`);
       
       if (role === "admin") {
         // Load admin view data
         const data = await getGameData(gameId);
+        console.log("Admin data loaded:", data);
+        
         if (data) {
           setAllRolesData(data.rounds);
           
           // Also load current stocks and orders
           const adminData = await getAdminViewData(gameId);
+          console.log("Admin view data:", adminData);
+          
           if (adminData) {
             setPlayerStocks(adminData.stocks);
             setPendingOrders(adminData.pendingOrders);
@@ -63,12 +68,16 @@ export const useGameState = () => {
       } else {
         // Load player view data
         const data = await getGameData(gameId);
+        console.log("Player data loaded:", data);
+        
         if (data && data.rounds.length > 0) {
           const latestRound = data.rounds[data.rounds.length - 1];
           
           // Set current stock and cost based on role
           const currentStock = latestRound[`${role}_stock`];
           const currentCost = latestRound[`${role}_cost`];
+          
+          console.log(`Setting ${role} stock to ${currentStock} and cost to ${currentCost}`);
           
           setStock(currentStock);
           setCost(currentCost);

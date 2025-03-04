@@ -27,6 +27,8 @@ export async function getGameData(gameId: string) {
 
   // Real Supabase implementation
   try {
+    console.log(`Fetching game data for game ID: ${gameId}`);
+    
     // Get the game
     const { data: game, error: gameError } = await supabase
       .from('games')
@@ -34,7 +36,12 @@ export async function getGameData(gameId: string) {
       .eq('id', gameId)
       .single();
 
-    if (gameError) throw gameError;
+    if (gameError) {
+      console.error('Error fetching game:', gameError);
+      throw gameError;
+    }
+
+    console.log('Game data fetched:', game);
 
     // Get the rounds for this game
     const { data: rounds, error: roundsError } = await supabase
@@ -43,7 +50,12 @@ export async function getGameData(gameId: string) {
       .eq('game_id', gameId)
       .order('round', { ascending: true });
 
-    if (roundsError) throw roundsError;
+    if (roundsError) {
+      console.error('Error fetching rounds:', roundsError);
+      throw roundsError;
+    }
+
+    console.log(`Fetched ${rounds?.length || 0} rounds for game ${gameId}`);
 
     return { ...game, rounds: rounds || [] };
   } catch (error) {
@@ -80,6 +92,8 @@ export async function getAdminViewData(gameId: string) {
 
   // Real Supabase implementation
   try {
+    console.log(`Fetching admin view data for game ID: ${gameId}`);
+    
     // Get the latest round
     const { data: latestRound, error: roundError } = await supabase
       .from('game_rounds')
@@ -89,7 +103,12 @@ export async function getAdminViewData(gameId: string) {
       .limit(1)
       .single();
 
-    if (roundError) throw roundError;
+    if (roundError) {
+      console.error('Error fetching latest round:', roundError);
+      throw roundError;
+    }
+
+    console.log('Latest round fetched:', latestRound);
 
     // Get pending orders
     const { data: pendingOrders, error: ordersError } = await supabase
@@ -98,7 +117,12 @@ export async function getAdminViewData(gameId: string) {
       .eq('game_id', gameId)
       .eq('fulfilled', false);
 
-    if (ordersError) throw ordersError;
+    if (ordersError) {
+      console.error('Error fetching pending orders:', ordersError);
+      throw ordersError;
+    }
+
+    console.log(`Fetched ${pendingOrders?.length || 0} pending orders for game ${gameId}`);
 
     // Process the data into the required format
     const stocks = {
