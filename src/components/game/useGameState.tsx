@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { 
@@ -186,8 +185,11 @@ export const useGameState = () => {
         .single();
       
       if (!game) {
+        console.error("Failed to get current round");
         throw new Error("Failed to get current round");
       }
+      
+      console.log(`Placing order in game ${gameId}, current round: ${game.current_round}`);
       
       // Place the order
       const order = await placeOrder(
@@ -201,15 +203,19 @@ export const useGameState = () => {
       if (order) {
         // Update costs to reflect the order placement
         const costIncrease = orderAmount * getCostMultiplier(role);
-        await updateCosts(gameId, game.current_round, role, costIncrease);
+        const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
         
-        toast({
-          title: "Order Placed",
-          description: `You ordered ${orderAmount} units`,
-        });
-        
-        // Reload game data to reflect changes
-        await loadGameData();
+        if (costsUpdated) {
+          toast({
+            title: "Order Placed",
+            description: `You ordered ${orderAmount} units`,
+          });
+          
+          // Reload game data to reflect changes
+          await loadGameData();
+        } else {
+          throw new Error("Failed to update costs");
+        }
       } else {
         throw new Error("Failed to place order");
       }
@@ -217,7 +223,7 @@ export const useGameState = () => {
       console.error("Error placing order:", error);
       toast({
         title: "Error",
-        description: "Failed to place order",
+        description: "Failed to place order. Please try again.",
         variant: "destructive"
       });
     } finally {

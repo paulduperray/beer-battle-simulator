@@ -12,18 +12,12 @@ const hasCredentials = supabaseUrl && supabaseAnonKey;
 export const supabase = hasCredentials 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createClient(
-      'https://placeholder-url.supabase.co', 
-      'placeholder-key'
+      'https://ntwmdcznhsssyqpjuemg.supabase.co', 
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50d21kY3puaHNzc3lxcGp1ZW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEwMDMxNzUsImV4cCI6MjA1NjU3OTE3NX0.A53XsGUaOQQn0C_wzwN34UGn_fXDHKbDATTe1NGkAI8'
     );
 
 // Export a flag to check if Supabase is properly configured
-export const isSupabaseConfigured = hasCredentials;
+export const isSupabaseConfigured = true;
 
-// Log message if credentials are missing
-if (!hasCredentials) {
-  console.warn(
-    'Supabase credentials are missing. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment variables. The application will run in offline mode with limited functionality.'
-  );
-} else {
-  console.log('Supabase is configured with URL:', supabaseUrl.substring(0, 15) + '...');
-}
+// Log message if using the connected project
+console.log('Supabase is configured and connected to project: ntwmdcznhsssyqpjuemg');

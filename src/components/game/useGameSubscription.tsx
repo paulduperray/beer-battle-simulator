@@ -25,6 +25,14 @@ export const useGameSubscription = ({
     // Subscribe to game updates
     const subscription = subscribeToGameUpdates(gameId, (payload) => {
       console.log(`Received update for game ${gameId}:`, payload);
+      
+      // For important tables, show a more specific message
+      if (payload.table === 'pending_orders') {
+        console.log(`Order update detected: ${payload.eventType} operation`);
+      } else if (payload.table === 'game_rounds') {
+        console.log(`Game round update detected: ${payload.eventType} operation`);
+      }
+      
       // Reload game data when something changes
       loadGameData();
     });
