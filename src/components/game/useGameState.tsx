@@ -194,10 +194,7 @@ export const useGameState = () => {
         const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
         
         if (costsUpdated) {
-          toast({
-            title: "Order Placed",
-            description: `You ordered ${orderAmount} units`,
-          });
+          toast("Order Placed: You ordered " + orderAmount + " units");
           
           // Reload game data to reflect changes
           await loadGameData();
@@ -209,10 +206,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error placing order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to place order. Please try again.",
-      });
+      toast("Error: Failed to place order. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -227,10 +221,7 @@ export const useGameState = () => {
       const { game, newRound } = await advanceToNextRound(gameId);
       
       if (game && newRound) {
-        toast({
-          title: "Next Round",
-          description: `Advanced to round ${game.current_round}`,
-        });
+        toast("Advanced to round " + game.current_round);
         
         // Reload game data to reflect changes
         await loadGameData();
@@ -239,10 +230,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error advancing round:", error);
-      toast({
-        title: "Error",
-        description: "Failed to advance to next round",
-      });
+      toast("Error: Failed to advance to next round");
     } finally {
       setLoading(false);
     }
