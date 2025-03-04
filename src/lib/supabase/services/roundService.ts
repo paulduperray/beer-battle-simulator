@@ -70,8 +70,8 @@ export async function advanceToNextRound(gameId: string) {
 
     // Process orders that are ready to be fulfilled
     for (const order of pendingOrders || []) {
-      // Only process orders that have been waiting for 2 rounds
-      if (order.round <= currentRound - 2) {
+      // Only process orders that are due for delivery
+      if (order.delivery_round === nextRound) {
         // Decrease source stock
         if (order.source !== 'production') {
           const sourceStock = `${order.source}_stock`;

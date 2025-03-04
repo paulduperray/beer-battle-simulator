@@ -9,7 +9,156 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      game_rounds: {
+        Row: {
+          created_at: string | null
+          distributor_cost: number
+          distributor_stock: number
+          factory_cost: number
+          factory_stock: number
+          game_id: string | null
+          id: string
+          retailer_cost: number
+          retailer_stock: number
+          round: number
+          wholesaler_cost: number
+          wholesaler_stock: number
+        }
+        Insert: {
+          created_at?: string | null
+          distributor_cost?: number
+          distributor_stock?: number
+          factory_cost?: number
+          factory_stock?: number
+          game_id?: string | null
+          id?: string
+          retailer_cost?: number
+          retailer_stock?: number
+          round: number
+          wholesaler_cost?: number
+          wholesaler_stock?: number
+        }
+        Update: {
+          created_at?: string | null
+          distributor_cost?: number
+          distributor_stock?: number
+          factory_cost?: number
+          factory_stock?: number
+          game_id?: string | null
+          id?: string
+          retailer_cost?: number
+          retailer_stock?: number
+          round?: number
+          wholesaler_cost?: number
+          wholesaler_stock?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_rounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          created_at: string | null
+          current_round: number | null
+          game_code: string
+          id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_round?: number | null
+          game_code: string
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_round?: number | null
+          game_code?: string
+          id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      pending_orders: {
+        Row: {
+          created_at: string | null
+          delivery_round: number
+          destination: string
+          fulfilled: boolean
+          game_id: string | null
+          id: string
+          quantity: number
+          round: number
+          source: string
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_round: number
+          destination: string
+          fulfilled?: boolean
+          game_id?: string | null
+          id?: string
+          quantity: number
+          round: number
+          source: string
+        }
+        Update: {
+          created_at?: string | null
+          delivery_round?: number
+          destination?: string
+          fulfilled?: boolean
+          game_id?: string | null
+          id?: string
+          quantity?: number
+          round?: number
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_orders_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          created_at: string | null
+          game_id: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          role: string
+        }
+        Update: {
+          created_at?: string | null
+          game_id?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

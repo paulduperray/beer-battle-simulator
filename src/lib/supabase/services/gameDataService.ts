@@ -149,11 +149,11 @@ export async function getAdminViewData(gameId: string) {
 
     // Process pending orders
     pendingOrders?.forEach(order => {
-      if (order.destination !== 'production') {
+      if (order.destination in ordersByRole) {
         ordersByRole[order.destination] += order.quantity;
       }
       
-      if (order.source !== 'production') {
+      if (order.source in deliveriesByRole) {
         deliveriesByRole[order.source] += order.quantity;
       }
     });

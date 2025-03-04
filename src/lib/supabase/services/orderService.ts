@@ -33,7 +33,7 @@ export async function placeOrder(
       .insert({
         game_id: gameId,
         round: round,
-        quantity: quantity,
+        quantity: quantity, // Changed from amount to quantity to match the database schema
         source: source,
         destination: destination,
         delivery_round: delivery_round
