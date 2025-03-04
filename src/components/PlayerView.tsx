@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Package, ArrowDown, ArrowUp, TrendingUp, Clock } from "lucide-react";
+import { Package, ArrowDown, ArrowUp, TrendingUp, Clock, Hash } from "lucide-react";
 
 interface PlayerViewProps {
   role: string;
   stock: number;
   cost: number;
+  gameCode?: string;
   onPlaceOrder: (order: number) => void;
 }
 
-const PlayerView: React.FC<PlayerViewProps> = ({ role, stock, cost, onPlaceOrder }) => {
+const PlayerView: React.FC<PlayerViewProps> = ({ role, stock, cost, gameCode, onPlaceOrder }) => {
   const [order, setOrder] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,12 +51,22 @@ const PlayerView: React.FC<PlayerViewProps> = ({ role, stock, cost, onPlaceOrder
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-4">
-        <Badge variant="outline" className="mb-2 animate-float">
-          {roleTitles[role] || role}
-        </Badge>
-        <h2 className="text-2xl font-medium tracking-tight">{roleTitles[role] || role} Dashboard</h2>
-        <p className="text-muted-foreground">{roleDescriptions[role] || "Manage your inventory and orders"}</p>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <Badge variant="outline" className="mb-2 animate-float">
+            {roleTitles[role] || role}
+          </Badge>
+          <h2 className="text-2xl font-medium tracking-tight">{roleTitles[role] || role} Dashboard</h2>
+          <p className="text-muted-foreground">{roleDescriptions[role] || "Manage your inventory and orders"}</p>
+        </div>
+        {gameCode && (
+          <div className="flex items-center">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Hash className="h-3 w-3" />
+              Game ID: {gameCode}
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">

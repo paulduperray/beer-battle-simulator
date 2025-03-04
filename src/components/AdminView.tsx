@@ -3,11 +3,12 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import StockChart from "./StockChart";
-import { PlayCircle, Clock, AlertTriangle } from "lucide-react";
+import { PlayCircle, Clock, AlertTriangle, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface AdminViewProps {
   gameData: any[];
+  gameCode?: string;
   playerStocks: Record<string, number>;
   pendingOrders: Record<string, number>;
   incomingDeliveries: Record<string, number>;
@@ -17,6 +18,7 @@ interface AdminViewProps {
 
 const AdminView: React.FC<AdminViewProps> = ({ 
   gameData, 
+  gameCode,
   playerStocks, 
   pendingOrders, 
   incomingDeliveries, 
@@ -42,6 +44,12 @@ const AdminView: React.FC<AdminViewProps> = ({
           <p className="text-muted-foreground">Monitor and control the game flow</p>
         </div>
         <div className="flex items-center gap-4">
+          {gameCode && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Hash className="h-3 w-3" />
+              Game ID: {gameCode}
+            </Badge>
+          )}
           <Badge variant="outline" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Round {currentRound}

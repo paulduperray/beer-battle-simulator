@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { 
   createGame, 
@@ -36,12 +36,22 @@ export const useGameState = () => {
   const [pendingOrders, setPendingOrders] = useState<Record<string, number>>({});
   const [incomingDeliveries, setIncomingDeliveries] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingCount, setLoadingCount] = useState<number>(0);
   
-  // Function to load game data based on role
-  const loadGameData = async () => {
+  // Function to load game data based on role - avec des mécanismes pour éviter les chargements infinis
+  const loadGameData = useCallback(async () => {
     if (!gameId) return;
     
     try {
+      // Protection contre un chargement constant
+      setLoadingCount(prev => {
+        if (prev > 5) {
+          console.log("Trop de tentatives de chargement consécutives, on interrompt");
+          return 0; // Reset le compteur
+        }
+        return prev + 1;
+      });
+      
       setLoading(true);
       console.log(`Loading game data for game ID: ${gameId}, role: ${role}`);
       
@@ -51,24 +61,26 @@ export const useGameState = () => {
         console.log("Admin data loaded:", data);
         
         if (data) {
-          setAllRolesData(data.rounds);
+          setAllRolesData(data.rounds || []);
           
           // Also load current stocks and orders
           const adminData = await getAdminViewData(gameId);
           console.log("Admin view data:", adminData);
           
           if (adminData) {
-            setPlayerStocks(adminData.stocks);
-            setPendingOrders(adminData.pendingOrders);
-            setIncomingDeliveries(adminData.incomingDeliveries);
+            setPlayerStocks(adminData.stocks || {});
+            setPendingOrders(adminData.pendingOrders || {});
+            setIncomingDeliveries(adminData.incomingDeliveries || {});
           }
+          // Reset loading counter on success
+          setLoadingCount(0);
         }
       } else {
         // Load player view data
         const data = await getGameData(gameId);
         console.log("Player data loaded:", data);
         
-        if (data && data.rounds.length > 0) {
+        if (data && data.rounds && data.rounds.length > 0) {
           const latestRound = data.rounds[data.rounds.length - 1];
           
           // Set current stock and cost based on role
@@ -86,6 +98,9 @@ export const useGameState = () => {
             stock: round[`${role}_stock`],
             cost: round[`${role}_cost`]
           })));
+          
+          // Reset loading counter on success
+          setLoadingCount(0);
         }
       }
     } catch (error) {
@@ -94,10 +109,13 @@ export const useGameState = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [gameId, role]);
 
   const handleJoinGame = async (newGameCode: string, newRole: string) => {
-    if (!newGameCode || !newRole) return;
+    if (!newGameCode || !newRole) {
+      toast("Please enter a game code and select a role");
+      return;
+    }
     
     try {
       setLoading(true);
@@ -112,7 +130,7 @@ export const useGameState = () => {
           setRole(newRole);
           setView("admin");
           
-          toast(`Game ${newGameCode} created successfully!`);
+          toast("Game created successfully!");
         } else {
           throw new Error("Failed to create game");
         }
@@ -125,13 +143,16 @@ export const useGameState = () => {
           setGameId(game.id);
           setGameCode(game.game_code);
           setRole(newRole);
-          setView("player");
+          setView("player"); // Changement direct vers la vue du joueur
           
-          toast(`Joined game ${newGameCode} as ${newRole}`);
+          toast(`Joined game as ${newRole}`);
         } else {
           throw new Error("Failed to join game");
         }
       }
+      
+      // Reset loading counter après une connexion réussie
+      setLoadingCount(0);
     } catch (error) {
       console.error("Error joining game:", error);
       toast("Failed to join game. Please check the game code.");

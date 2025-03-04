@@ -42,14 +42,25 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   }, []);
 
   const handleJoin = () => {
-    if (gameId && role) {
-      setIsLoading(true);
-      // Simulate loading for better UX
-      setTimeout(() => {
-        onJoin(gameId, role);
-        setIsLoading(false);
-      }, 600);
+    if (!gameId) {
+      toast.error("Please enter a game ID");
+      return;
     }
+    
+    if (!role) {
+      toast.error("Please select a role");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    // Join the game
+    onJoin(gameId, role);
+    
+    // Reset loading after a short delay
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
   };
 
   const getNextGameId = async () => {
@@ -85,29 +96,32 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   };
 
   const handleCreate = async () => {
-    if (role) {
-      setIsLoading(true);
-      try {
-        // Get next sequential game ID
-        const nextGameId = await getNextGameId();
-        setCreatedGameId(nextGameId);
-        
-        // Join the game
-        onJoin(nextGameId, role);
+    if (!role) {
+      toast.error("Please select a role");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      // Get next sequential game ID
+      const nextGameId = await getNextGameId();
+      setCreatedGameId(nextGameId);
+      
+      // Join the game
+      onJoin(nextGameId, role);
 
-        // Update the recent games list
-        setRecentGames(prev => [
-          { id: 'new', game_code: nextGameId },
-          ...prev
-        ]);
+      // Update the recent games list
+      setRecentGames(prev => [
+        { id: 'new', game_code: nextGameId },
+        ...prev
+      ]);
 
-        toast.success(`Game ${nextGameId} created successfully!`);
-      } catch (error) {
-        console.error("Error creating game:", error);
-        toast.error("Failed to create game. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
+      toast.success(`Game ${nextGameId} created successfully!`);
+    } catch (error) {
+      console.error("Error creating game:", error);
+      toast.error("Failed to create game. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 

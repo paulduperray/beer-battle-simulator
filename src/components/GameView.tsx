@@ -12,6 +12,7 @@ const GameView: React.FC = () => {
     view,
     setView,
     gameId,
+    gameCode,
     role,
     stock,
     cost,
@@ -35,7 +36,7 @@ const GameView: React.FC = () => {
     loadGameData
   });
 
-  // Automatically set the view based on the role when it changes
+  // Automatiquement rediriger vers la vue appropriée après connexion
   useEffect(() => {
     if (role === "admin") {
       setView("admin");
@@ -61,6 +62,7 @@ const GameView: React.FC = () => {
             role={role}
             stock={stock}
             cost={cost}
+            gameCode={gameCode}
             allRolesData={allRolesData}
             playerStocks={playerStocks}
             pendingOrders={pendingOrders}

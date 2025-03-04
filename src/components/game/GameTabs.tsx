@@ -12,6 +12,7 @@ interface GameTabsProps {
   role: string;
   stock: number;
   cost: number;
+  gameCode?: string;
   allRolesData: any[];
   playerStocks: Record<string, number>;
   pendingOrders: Record<string, number>;
@@ -28,6 +29,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
   role,
   stock,
   cost,
+  gameCode,
   allRolesData,
   playerStocks,
   pendingOrders,
@@ -38,7 +40,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
   chartDataKeys,
 }) => {
   return (
-    <Tabs defaultValue={view === "admin" ? "admin" : "player"} onValueChange={setView} className="w-full">
+    <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-4">
         <TabsTrigger value="join" className="flex items-center justify-center">
           <Users className="mr-2 h-4 w-4" />
@@ -62,7 +64,8 @@ const GameTabs: React.FC<GameTabsProps> = ({
         <PlayerView 
           role={role} 
           stock={stock} 
-          cost={cost} 
+          cost={cost}
+          gameCode={gameCode}
           onPlaceOrder={onPlaceOrder} 
         />
       </TabsContent>
@@ -70,6 +73,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
       <TabsContent value="admin" className="mt-0 animate-scale-in">
         <AdminView 
           gameData={allRolesData}
+          gameCode={gameCode}
           playerStocks={playerStocks}
           pendingOrders={pendingOrders}
           incomingDeliveries={incomingDeliveries}
