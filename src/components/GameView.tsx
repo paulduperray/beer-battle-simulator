@@ -16,11 +16,16 @@ const GameView: React.FC = () => {
     role,
     stock,
     cost,
+    roundCost,
     currentGameData,
     allRolesData,
     playerStocks,
     pendingOrders,
     incomingDeliveries,
+    upcomingDeliveries,
+    customerOrder,
+    lastDownstreamOrder,
+    costParameters,
     loading,
     loadGameData,
     handleJoinGame,
@@ -62,11 +67,17 @@ const GameView: React.FC = () => {
             role={role}
             stock={stock}
             cost={cost}
+            roundCost={roundCost}
             gameCode={gameCode}
             allRolesData={allRolesData}
             playerStocks={playerStocks}
             pendingOrders={pendingOrders}
             incomingDeliveries={incomingDeliveries}
+            upcomingDeliveries={upcomingDeliveries}
+            customerOrder={customerOrder}
+            lastDownstreamOrder={lastDownstreamOrder}
+            costParameters={costParameters}
+            currentGameData={currentGameData}
             onJoinGame={handleJoinGame}
             onPlaceOrder={handlePlaceOrder}
             onNextRound={handleNextRound}

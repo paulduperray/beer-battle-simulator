@@ -32,7 +32,7 @@ export async function advanceToNextRound(gameId: string) {
     // Start a transaction
     const { data: game, error: gameError } = await supabase
       .from('games')
-      .select('current_round')
+      .select('current_round, shortage_cost, holding_cost')
       .eq('id', gameId)
       .single();
 
@@ -40,6 +40,8 @@ export async function advanceToNextRound(gameId: string) {
 
     const currentRound = game.current_round;
     const nextRound = currentRound + 1;
+    const shortageCost = game.shortage_cost || 10;
+    const holdingCost = game.holding_cost || 5;
 
     // Get the current round data
     const { data: roundData, error: roundError } = await supabase
@@ -56,7 +58,7 @@ export async function advanceToNextRound(gameId: string) {
       .from('pending_orders')
       .select('*')
       .eq('game_id', gameId)
-      .eq('fulfilled', false);
+      .eq('status', 'pending');
 
     if (ordersError) throw ordersError;
 
@@ -68,27 +70,58 @@ export async function advanceToNextRound(gameId: string) {
       retailer_stock: roundData.retailer_stock,
     };
 
-    // Process orders that are ready to be fulfilled
+    // Generate a new customer order (for retailer) between 3-7 units
+    const customerOrder = Math.floor(Math.random() * 5) + 3;
+
+    // Process orders that are due for delivery in the next round
     for (const order of pendingOrders || []) {
-      // Only process orders that are due for delivery
       if (order.delivery_round === nextRound) {
-        // Decrease source stock
+        // Decrease source stock if not production
         if (order.source !== 'production') {
           const sourceStock = `${order.source}_stock`;
-          newStocks[sourceStock] = Math.max(0, newStocks[sourceStock] - order.quantity);
+          newStocks[sourceStock] = newStocks[sourceStock] - order.quantity;
         }
 
-        // Increase destination stock
+        // Increase destination stock if not customer
         if (order.destination !== 'customer') {
           const destStock = `${order.destination}_stock`;
           newStocks[destStock] = newStocks[destStock] + order.quantity;
         }
 
-        // Mark order as fulfilled
+        // Mark order as being delivered next round
         await supabase
           .from('pending_orders')
-          .update({ fulfilled: true })
+          .update({ status: 'next_round' })
           .eq('id', order.id);
+      }
+    }
+
+    // Process retailer selling to customers (if this is round 2+)
+    if (currentRound > 1) {
+      // Retailer loses stock based on customer order from previous round
+      const prevCustomerOrder = roundData.customer_order || 5;
+      newStocks.retailer_stock = newStocks.retailer_stock - prevCustomerOrder;
+    }
+
+    // Calculate costs for this round
+    const roundCosts = {
+      factory_round_cost: 0,
+      distributor_round_cost: 0,
+      wholesaler_round_cost: 0,
+      retailer_round_cost: 0,
+    };
+
+    // Calculate holding and shortage costs for each player
+    for (const role of ['factory', 'distributor', 'wholesaler', 'retailer']) {
+      const stockKey = `${role}_stock`;
+      const costKey = `${role}_round_cost`;
+      
+      if (newStocks[stockKey] < 0) {
+        // Shortage cost
+        roundCosts[costKey] = Math.abs(newStocks[stockKey]) * shortageCost;
+      } else {
+        // Holding cost
+        roundCosts[costKey] = newStocks[stockKey] * holdingCost;
       }
     }
 
@@ -99,10 +132,15 @@ export async function advanceToNextRound(gameId: string) {
         game_id: gameId,
         round: nextRound,
         ...newStocks,
-        factory_cost: roundData.factory_cost,
-        distributor_cost: roundData.distributor_cost,
-        wholesaler_cost: roundData.wholesaler_cost,
-        retailer_cost: roundData.retailer_cost,
+        customer_order: customerOrder,
+        factory_cost: roundData.factory_cost + roundCosts.factory_round_cost,
+        distributor_cost: roundData.distributor_cost + roundCosts.distributor_round_cost,
+        wholesaler_cost: roundData.wholesaler_cost + roundCosts.wholesaler_round_cost,
+        retailer_cost: roundData.retailer_cost + roundCosts.retailer_round_cost,
+        factory_round_cost: roundCosts.factory_round_cost,
+        distributor_round_cost: roundCosts.distributor_round_cost,
+        wholesaler_round_cost: roundCosts.wholesaler_round_cost,
+        retailer_round_cost: roundCosts.retailer_round_cost,
       })
       .select('*')
       .single();
@@ -118,6 +156,13 @@ export async function advanceToNextRound(gameId: string) {
       .single();
 
     if (updateError) throw updateError;
+
+    // Mark delivered orders as completed
+    await supabase
+      .from('pending_orders')
+      .update({ status: 'completed' })
+      .eq('game_id', gameId)
+      .eq('status', 'next_round');
 
     return { game: updatedGame, newRound };
   } catch (error) {

@@ -1,3 +1,4 @@
+
 import { supabase, isSupabaseConfigured } from '../client';
 
 export async function getGameData(gameId: string) {
@@ -19,6 +20,11 @@ export async function getGameData(gameId: string) {
           distributor_cost: 0,
           wholesaler_cost: 0,
           retailer_cost: 0,
+          customer_order: 5,
+          factory_round_cost: 0,
+          distributor_round_cost: 0,
+          wholesaler_round_cost: 0,
+          retailer_round_cost: 0,
         }
       ]
     };
@@ -85,7 +91,8 @@ export async function getAdminViewData(gameId: string) {
         distributor: 0,
         wholesaler: 0,
         retailer: 0,
-      }
+      },
+      customerOrder: 5
     };
   }
 
@@ -109,12 +116,12 @@ export async function getAdminViewData(gameId: string) {
 
     console.log('Latest round fetched:', latestRound);
 
-    // Get pending orders - now getting all unfulfilled orders to show in real-time
+    // Get pending orders - now getting all pending orders to show in real-time
     const { data: pendingOrders, error: ordersError } = await supabase
       .from('pending_orders')
       .select('*')
       .eq('game_id', gameId)
-      .eq('fulfilled', false);
+      .neq('status', 'completed');
 
     if (ordersError) {
       console.error('Error fetching pending orders:', ordersError);
@@ -122,6 +129,18 @@ export async function getAdminViewData(gameId: string) {
     }
 
     console.log(`Fetched ${pendingOrders?.length || 0} pending orders for game ${gameId}`);
+
+    // Get the game details for cost parameters
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('shortage_cost, holding_cost')
+      .eq('id', gameId)
+      .single();
+
+    if (gameError) {
+      console.error('Error fetching game details:', gameError);
+      throw gameError;
+    }
 
     // Process the data into the required format
     const stocks = {
@@ -147,7 +166,7 @@ export async function getAdminViewData(gameId: string) {
       retailer: 0,
     };
 
-    // Process pending orders - ensure we count all unfulfilled orders
+    // Process pending orders
     pendingOrders?.forEach(order => {
       if (order.destination in ordersByRole) {
         ordersByRole[order.destination] += order.quantity;
@@ -158,14 +177,161 @@ export async function getAdminViewData(gameId: string) {
       }
     });
 
+    // Group upcoming deliveries by role and delivery round
+    const upcomingDeliveries = {
+      nextRound: {
+        factory: 0,
+        distributor: 0,
+        wholesaler: 0,
+        retailer: 0,
+      },
+      futureRound: {
+        factory: 0,
+        distributor: 0,
+        wholesaler: 0,
+        retailer: 0,
+      }
+    };
+
+    // Get current round
+    const currentRound = latestRound.round;
+
+    // Process pending orders for upcoming deliveries
+    pendingOrders?.forEach(order => {
+      if (order.destination in upcomingDeliveries.nextRound) {
+        if (order.delivery_round === currentRound + 1) {
+          upcomingDeliveries.nextRound[order.destination] += order.quantity;
+        } else if (order.delivery_round === currentRound + 2) {
+          upcomingDeliveries.futureRound[order.destination] += order.quantity;
+        }
+      }
+    });
+
     return {
       stocks,
       pendingOrders: ordersByRole,
       incomingDeliveries: deliveriesByRole,
+      upcomingDeliveries,
+      customerOrder: latestRound.customer_order || 5,
+      costs: {
+        shortageCost: game.shortage_cost || 10,
+        holdingCost: game.holding_cost || 5
+      }
     };
   } catch (error) {
     console.error('Error getting admin view data:', error);
     return null;
+  }
+}
+
+export async function getRoleViewData(gameId: string, role: string) {
+  try {
+    console.log(`Fetching ${role} view data for game ID: ${gameId}`);
+    
+    // Get the game info including current round
+    const { data: game, error: gameError } = await supabase
+      .from('games')
+      .select('current_round, shortage_cost, holding_cost')
+      .eq('id', gameId)
+      .single();
+
+    if (gameError) {
+      console.error('Error fetching game info:', gameError);
+      throw gameError;
+    }
+
+    const currentRound = game.current_round;
+
+    // Get the latest round data
+    const { data: latestRound, error: roundError } = await supabase
+      .from('game_rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('round', currentRound)
+      .single();
+
+    if (roundError) {
+      console.error('Error fetching latest round:', roundError);
+      throw roundError;
+    }
+
+    // Get pending orders for this role
+    const { data: pendingOrders, error: ordersError } = await supabase
+      .from('pending_orders')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('destination', role)
+      .neq('status', 'completed');
+
+    if (ordersError) {
+      console.error('Error fetching pending orders:', ordersError);
+      throw ordersError;
+    }
+
+    // Get downstream orders (orders from the next role in the chain)
+    const downstreamRole = getDownstreamRole(role);
+    const { data: downstreamOrders, error: downstreamError } = await supabase
+      .from('pending_orders')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('source', role)
+      .neq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (downstreamError) {
+      console.error('Error fetching downstream orders:', downstreamError);
+    }
+
+    // Process upcoming deliveries by delivery round
+    const upcomingDeliveries = {
+      nextRound: 0,
+      futureRound: 0
+    };
+
+    pendingOrders?.forEach(order => {
+      if (order.delivery_round === currentRound + 1) {
+        upcomingDeliveries.nextRound += order.quantity;
+      } else if (order.delivery_round === currentRound + 2) {
+        upcomingDeliveries.futureRound += order.quantity;
+      }
+    });
+
+    // Get customer order if the role is retailer
+    let customerOrder = null;
+    if (role === 'retailer') {
+      customerOrder = latestRound.customer_order;
+    }
+
+    // Get last downstream order
+    const lastDownstreamOrder = downstreamOrders && downstreamOrders.length > 0 
+      ? downstreamOrders[0].quantity 
+      : null;
+
+    return {
+      stock: latestRound[`${role}_stock`],
+      cost: latestRound[`${role}_cost`],
+      roundCost: latestRound[`${role}_round_cost`],
+      upcomingDeliveries,
+      customerOrder,
+      shortageCost: game.shortage_cost || 10,
+      holdingCost: game.holding_cost || 5,
+      lastDownstreamOrder
+    };
+  } catch (error) {
+    console.error(`Error getting ${role} view data:`, error);
+    return null;
+  }
+}
+
+// Helper function to get downstream role
+function getDownstreamRole(role: string) {
+  switch (role) {
+    case 'factory': return 'distributor';
+    case 'distributor': return 'wholesaler';
+    case 'wholesaler': return 'retailer';
+    case 'retailer': return 'customer';
+    default: return null;
   }
 }
 

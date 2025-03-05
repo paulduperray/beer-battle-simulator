@@ -5,7 +5,11 @@ export async function createGame(gameCode: string) {
   try {
     const { data, error } = await supabase
       .from('games')
-      .insert({ game_code: gameCode })
+      .insert({ 
+        game_code: gameCode,
+        shortage_cost: 10,
+        holding_cost: 5
+      })
       .select('*')
       .single();
 
@@ -45,7 +49,20 @@ export async function joinGame(gameCode: string, role: string) {
       return { game: gameData, player: { role: 'admin' } };
     }
 
-    // For other roles, create a player entry - this allows multiple players with the same role
+    // Check if a player with this role already exists for this game
+    const { data: existingPlayer, error: findError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameData.id)
+      .eq('role', role)
+      .maybeSingle();
+    
+    if (existingPlayer) {
+      console.log(`Found existing player with role ${role} for game ${gameData.id}`);
+      return { game: gameData, player: existingPlayer };
+    }
+    
+    // If no player with this role exists, create a new one
     const { data: playerData, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -57,23 +74,7 @@ export async function joinGame(gameCode: string, role: string) {
 
     if (playerError) {
       console.error('Error creating player:', playerError);
-      
-      // If error occurs (which might happen if unique constraint exists),
-      // we'll try to find if a player with this role already exists
-      const { data: existingPlayer, error: findError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('game_id', gameData.id)
-        .eq('role', role)
-        .single();
-        
-      if (findError) {
-        console.error('Error finding existing player:', findError);
-        return { game: gameData, player: null };
-      }
-      
-      console.log(`Found existing player with role ${role} for game ${gameData.id}`);
-      return { game: gameData, player: existingPlayer };
+      return { game: gameData, player: null };
     }
 
     console.log(`Created player with role ${role} for game ${gameData.id}`);

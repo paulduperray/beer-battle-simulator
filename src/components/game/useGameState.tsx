@@ -1,9 +1,11 @@
-import { useState, useCallback } from "react";
+
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
   createGame, 
   joinGame, 
   getGameData, 
+  getRoleViewData,
   placeOrder,
   updateCosts, 
   advanceToNextRound, 
@@ -29,15 +31,26 @@ export const useGameState = () => {
   const [role, setRole] = useState<string>("");
   const [stock, setStock] = useState<number>(10);
   const [cost, setCost] = useState<number>(0);
+  const [roundCost, setRoundCost] = useState<number>(0);
   const [currentGameData, setCurrentGameData] = useState<any[]>([]);
   const [allRolesData, setAllRolesData] = useState<any[]>([]);
   const [playerStocks, setPlayerStocks] = useState<Record<string, number>>({});
   const [pendingOrders, setPendingOrders] = useState<Record<string, number>>({});
   const [incomingDeliveries, setIncomingDeliveries] = useState<Record<string, number>>({});
+  const [upcomingDeliveries, setUpcomingDeliveries] = useState<any>({
+    nextRound: 0,
+    futureRound: 0
+  });
+  const [customerOrder, setCustomerOrder] = useState<number | null>(null);
+  const [lastDownstreamOrder, setLastDownstreamOrder] = useState<number | null>(null);
+  const [costParameters, setCostParameters] = useState({
+    shortageCost: 10,
+    holdingCost: 5
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingCount, setLoadingCount] = useState<number>(0);
   
-  // Function to load game data based on role - with mechanisms to avoid infinite loading
+  // Function to load game data based on role
   const loadGameData = useCallback(async () => {
     if (!gameId) return;
     
@@ -62,7 +75,7 @@ export const useGameState = () => {
         if (data) {
           setAllRolesData(data.rounds || []);
           
-          // Also load current stocks and orders - this is the part that needs to update in real-time
+          // Also load current stocks and orders
           const adminData = await getAdminViewData(gameId);
           console.log("Admin view data:", adminData);
           
@@ -70,33 +83,43 @@ export const useGameState = () => {
             setPlayerStocks(adminData.stocks || {});
             setPendingOrders(adminData.pendingOrders || {});
             setIncomingDeliveries(adminData.incomingDeliveries || {});
+            setCustomerOrder(adminData.customerOrder);
+            setCostParameters(adminData.costs || { shortageCost: 10, holdingCost: 5 });
           }
           // Reset loading counter on success
           setLoadingCount(0);
         }
       } else {
-        // Load player view data
-        const data = await getGameData(gameId);
-        console.log("Player data loaded:", data);
+        // Load player view data using the new unified function
+        const playerData = await getRoleViewData(gameId, role);
+        console.log(`${role} view data loaded:`, playerData);
         
-        if (data && data.rounds && data.rounds.length > 0) {
-          const latestRound = data.rounds[data.rounds.length - 1];
+        if (playerData) {
+          setStock(playerData.stock);
+          setCost(playerData.cost);
+          setRoundCost(playerData.roundCost || 0);
+          setUpcomingDeliveries(playerData.upcomingDeliveries || { nextRound: 0, futureRound: 0 });
+          setCostParameters({
+            shortageCost: playerData.shortageCost || 10,
+            holdingCost: playerData.holdingCost || 5
+          });
           
-          // Set current stock and cost based on role
-          const currentStock = latestRound[`${role}_stock`];
-          const currentCost = latestRound[`${role}_cost`];
+          if (role === 'retailer') {
+            setCustomerOrder(playerData.customerOrder);
+          }
           
-          console.log(`Setting ${role} stock to ${currentStock} and cost to ${currentCost}`);
+          setLastDownstreamOrder(playerData.lastDownstreamOrder);
           
-          setStock(currentStock);
-          setCost(currentCost);
-          
-          // Update local game data for the player view
-          setCurrentGameData(data.rounds.map(round => ({
-            round: round.round,
-            stock: round[`${role}_stock`],
-            cost: round[`${role}_cost`]
-          })));
+          // Also load historical data for charts
+          const historyData = await getGameData(gameId);
+          if (historyData && historyData.rounds) {
+            setCurrentGameData(historyData.rounds.map(round => ({
+              round: round.round,
+              stock: round[`${role}_stock`],
+              cost: round[`${role}_cost`],
+              roundCost: round[`${role}_round_cost`] || 0
+            })));
+          }
           
           // Reset loading counter on success
           setLoadingCount(0);
@@ -119,7 +142,7 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
-      // First try to join an existing game regardless of role
+      // Try to join an existing game
       console.log(`Joining game with code: ${newGameCode}, role: ${newRole}`);
       const { game, player } = await joinGame(newGameCode, newRole);
       
@@ -170,7 +193,7 @@ export const useGameState = () => {
   };
 
   const handlePlaceOrder = async (orderAmount: number) => {
-    if (!gameId || !role || orderAmount <= 0) return;
+    if (!gameId || !role || orderAmount < 0) return;
     
     try {
       setLoading(true);
@@ -214,7 +237,7 @@ export const useGameState = () => {
         orderAmount,
         source,
         destination,
-        game.current_round + 1 // Set delivery_round to next round
+        game.current_round + 2 // Set delivery_round to 2 rounds ahead
       );
       
       if (order) {
@@ -223,7 +246,7 @@ export const useGameState = () => {
         const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
         
         if (costsUpdated) {
-          toast("Order Placed: You ordered " + orderAmount + " units");
+          toast.success("Order Placed: You ordered " + orderAmount + " units");
           
           // Reload game data to reflect changes
           await loadGameData();
@@ -235,7 +258,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error placing order:", error);
-      toast("Error: Failed to place order. Please try again.");
+      toast.error("Error: Failed to place order. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -250,7 +273,7 @@ export const useGameState = () => {
       const { game, newRound } = await advanceToNextRound(gameId);
       
       if (game && newRound) {
-        toast("Advanced to round " + game.current_round);
+        toast.success("Advanced to round " + game.current_round);
         
         // Reload game data to reflect changes
         await loadGameData();
@@ -259,7 +282,7 @@ export const useGameState = () => {
       }
     } catch (error) {
       console.error("Error advancing round:", error);
-      toast("Error: Failed to advance to next round");
+      toast.error("Error: Failed to advance to next round");
     } finally {
       setLoading(false);
     }
@@ -268,12 +291,15 @@ export const useGameState = () => {
   // Show stock chart keys based on role or admin view
   const getDataKeys = () => {
     if (role === "admin") {
-      return [
-        "factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock",
-        "factory_cost", "distributor_cost", "wholesaler_cost", "retailer_cost"
-      ];
+      return {
+        stocks: ["factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock"],
+        costs: ["factory_cost", "distributor_cost", "wholesaler_cost", "retailer_cost"]
+      };
     } else {
-      return ["stock", "cost"];
+      return {
+        stocks: ["stock"],
+        costs: ["cost", "roundCost"]
+      };
     }
   };
 
@@ -286,11 +312,16 @@ export const useGameState = () => {
     role,
     stock,
     cost,
+    roundCost,
     currentGameData,
     allRolesData,
     playerStocks, 
     pendingOrders,
     incomingDeliveries,
+    upcomingDeliveries,
+    customerOrder,
+    lastDownstreamOrder,
+    costParameters,
     loading,
     loadGameData,
     handleJoinGame,

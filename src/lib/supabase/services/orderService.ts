@@ -33,10 +33,11 @@ export async function placeOrder(
       .insert({
         game_id: gameId,
         round: round,
-        quantity: quantity, // Changed from amount to quantity to match the database schema
+        quantity: quantity,
         source: source,
         destination: destination,
-        delivery_round: delivery_round
+        delivery_round: delivery_round,
+        status: 'pending'
       })
       .select('*')
       .single();
@@ -70,7 +71,8 @@ export async function processOrders(gameId: string, round: number) {
       .from('pending_orders')
       .select('*')
       .eq('game_id', gameId)
-      .eq('delivery_round', round);
+      .eq('delivery_round', round)
+      .eq('status', 'pending');
 
     if (fetchError) throw fetchError;
     
@@ -83,66 +85,16 @@ export async function processOrders(gameId: string, round: number) {
 
     // Process each order
     for (const order of orders) {
-      // Update the stock levels based on the order
-      await updateStockLevels(gameId, round, order.source, order.destination, order.quantity);
+      // Update the order status
+      await supabase
+        .from('pending_orders')
+        .update({ status: 'next_round' })
+        .eq('id', order.id);
     }
 
     return true;
   } catch (error) {
     console.error('Error processing orders:', error);
-    return false;
-  }
-}
-
-async function updateStockLevels(
-  gameId: string,
-  round: number,
-  source: string,
-  destination: string,
-  quantity: number
-) {
-  console.log(`Updating stock levels: Game ${gameId}, Round ${round}, From ${source} to ${destination}, Quantity ${quantity}`);
-  
-  try {
-    // Get the current game round
-    const { data: gameRound, error: fetchError } = await supabase
-      .from('game_rounds')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('round', round)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Skip "production" source as it's not a real entity
-    if (source !== 'production') {
-      // Decrement source stock
-      const sourceColumn = `${source}_stock`;
-      const newSourceStock = Math.max(0, (gameRound[sourceColumn] || 0) - quantity);
-      
-      const { error: updateSourceError } = await supabase
-        .from('game_rounds')
-        .update({ [sourceColumn]: newSourceStock })
-        .eq('id', gameRound.id);
-
-      if (updateSourceError) throw updateSourceError;
-    }
-
-    // Increment destination stock
-    const destinationColumn = `${destination}_stock`;
-    const newDestinationStock = (gameRound[destinationColumn] || 0) + quantity;
-    
-    const { error: updateDestError } = await supabase
-      .from('game_rounds')
-      .update({ [destinationColumn]: newDestinationStock })
-      .eq('id', gameRound.id);
-
-    if (updateDestError) throw updateDestError;
-
-    console.log(`Stock levels updated successfully: ${source} -> ${destination}, Quantity ${quantity}`);
-    return true;
-  } catch (error) {
-    console.error('Error updating stock levels:', error);
     return false;
   }
 }

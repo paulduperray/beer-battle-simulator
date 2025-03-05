@@ -3,7 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import StockChart from "./StockChart";
-import { PlayCircle, Clock, AlertTriangle, Hash } from "lucide-react";
+import { PlayCircle, Clock, AlertTriangle, Hash, Package, DollarSign, ShoppingCart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface AdminViewProps {
@@ -12,8 +12,16 @@ interface AdminViewProps {
   playerStocks: Record<string, number>;
   pendingOrders: Record<string, number>;
   incomingDeliveries: Record<string, number>;
+  customerOrder?: number | null;
+  costParameters?: {
+    shortageCost: number;
+    holdingCost: number;
+  };
   onNextRound: () => void;
-  chartDataKeys?: string[];
+  chartDataKeys?: {
+    stocks: string[];
+    costs: string[];
+  };
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ 
@@ -21,9 +29,14 @@ const AdminView: React.FC<AdminViewProps> = ({
   gameCode,
   playerStocks, 
   pendingOrders, 
-  incomingDeliveries, 
+  incomingDeliveries,
+  customerOrder = 5,
+  costParameters = { shortageCost: 10, holdingCost: 5 },
   onNextRound,
-  chartDataKeys = ["factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock"]
+  chartDataKeys = {
+    stocks: ["factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock"],
+    costs: ["factory_cost", "distributor_cost", "wholesaler_cost", "retailer_cost"]
+  }
 }) => {
   // Map roles to readable names
   const roleTitles: Record<string, string> = {
@@ -35,6 +48,14 @@ const AdminView: React.FC<AdminViewProps> = ({
 
   // Get current round number
   const currentRound = gameData.length;
+
+  // Color mapping for consistent styling
+  const roleColors = {
+    factory: "hsl(220, 70%, 50%)",
+    distributor: "hsl(160, 70%, 50%)",
+    wholesaler: "hsl(280, 70%, 50%)",
+    retailer: "hsl(340, 70%, 50%)"
+  };
 
   return (
     <div className="animate-fade-in">
@@ -68,57 +89,69 @@ const AdminView: React.FC<AdminViewProps> = ({
         <div className="flex items-start">
           <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
           <div>
-            <h4 className="font-medium text-amber-800">Order Delay System</h4>
-            <p className="text-sm text-amber-700">Orders take 2 rounds to be delivered. Pending orders are processed automatically when advancing rounds.</p>
+            <h4 className="font-medium text-amber-800">Game Information</h4>
+            <p className="text-sm text-amber-700">
+              Current customer demand: <strong>{customerOrder} units</strong> | 
+              Shortage cost: <strong>{costParameters.shortageCost}€ per unit</strong> | 
+              Holding cost: <strong>{costParameters.holdingCost}€ per unit</strong>
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Individual Role Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <StockChart 
-          data={gameData} 
-          dataKeys={["factory_stock", "factory_cost"]}
-          title="Factory Performance"
-          description="Track stock levels and costs for Factory"
-          colorMap={{
-            "factory_stock": "hsl(220, 70%, 50%)",
-            "factory_cost": "hsl(220, 70%, 70%)"
-          }}
-        />
-        
-        <StockChart 
-          data={gameData} 
-          dataKeys={["distributor_stock", "distributor_cost"]}
-          title="Distributor Performance"
-          description="Track stock levels and costs for Distributor"
-          colorMap={{
-            "distributor_stock": "hsl(160, 70%, 50%)",
-            "distributor_cost": "hsl(160, 70%, 70%)"
-          }}
-        />
-        
-        <StockChart 
-          data={gameData} 
-          dataKeys={["wholesaler_stock", "wholesaler_cost"]}
-          title="Wholesaler Performance"
-          description="Track stock levels and costs for Wholesaler"
-          colorMap={{
-            "wholesaler_stock": "hsl(280, 70%, 50%)",
-            "wholesaler_cost": "hsl(280, 70%, 70%)"
-          }}
-        />
-        
-        <StockChart 
-          data={gameData} 
-          dataKeys={["retailer_stock", "retailer_cost"]}
-          title="Retailer Performance"
-          description="Track stock levels and costs for Retailer"
-          colorMap={{
-            "retailer_stock": "hsl(340, 70%, 50%)",
-            "retailer_cost": "hsl(340, 70%, 70%)"
-          }}
-        />
+      {/* Main Charts */}
+      <div className="grid grid-cols-1 gap-6 mb-6">
+        <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Package className="mr-2 h-5 w-5 text-primary" />
+              Stock Levels
+            </CardTitle>
+            <CardDescription>Track inventory across all roles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <StockChart 
+                data={gameData} 
+                dataKeys={chartDataKeys.stocks}
+                title=""
+                description=""
+                colorMap={{
+                  "factory_stock": roleColors.factory,
+                  "distributor_stock": roleColors.distributor,
+                  "wholesaler_stock": roleColors.wholesaler,
+                  "retailer_stock": roleColors.retailer
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <DollarSign className="mr-2 h-5 w-5 text-primary" />
+              Cost Analysis
+            </CardTitle>
+            <CardDescription>Track costs across all roles</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <StockChart 
+                data={gameData} 
+                dataKeys={chartDataKeys.costs}
+                title=""
+                description=""
+                colorMap={{
+                  "factory_cost": roleColors.factory,
+                  "distributor_cost": roleColors.distributor,
+                  "wholesaler_cost": roleColors.wholesaler,
+                  "retailer_cost": roleColors.retailer
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -134,7 +167,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                   <span className="font-medium">{roleTitles[role] || role}</span>
                   <div className="flex items-center">
                     <span className={`px-3 py-1 rounded-full text-sm ${
-                      stock < 5 ? 'bg-red-100 text-red-800' : 
+                      stock < 0 ? 'bg-red-100 text-red-800' : 
+                      stock < 5 ? 'bg-amber-100 text-amber-800' : 
                       stock > 15 ? 'bg-green-100 text-green-800' : 
                       'bg-blue-100 text-blue-800'
                     }`}>
@@ -186,6 +220,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                 </li>
               ))}
             </ul>
+            <div className="mt-4 p-2 bg-amber-100 rounded-md flex items-center">
+              <ShoppingCart className="h-4 w-4 mr-2 text-amber-600" />
+              <span className="text-sm text-amber-800">
+                Customer demand: <strong>{customerOrder} units</strong>
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>

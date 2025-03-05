@@ -12,15 +12,30 @@ interface GameTabsProps {
   role: string;
   stock: number;
   cost: number;
+  roundCost?: number; 
   gameCode?: string;
   allRolesData: any[];
   playerStocks: Record<string, number>;
   pendingOrders: Record<string, number>;
   incomingDeliveries: Record<string, number>;
+  upcomingDeliveries?: {
+    nextRound: number;
+    futureRound: number;
+  };
+  customerOrder?: number | null;
+  lastDownstreamOrder?: number | null;
+  costParameters?: {
+    shortageCost: number;
+    holdingCost: number;
+  };
+  currentGameData?: any[];
   onJoinGame: (gameCode: string, role: string) => void;
   onPlaceOrder: (order: number) => void;
   onNextRound: () => void;
-  chartDataKeys: string[];
+  chartDataKeys: {
+    stocks: string[];
+    costs: string[];
+  };
 }
 
 const GameTabs: React.FC<GameTabsProps> = ({
@@ -29,11 +44,17 @@ const GameTabs: React.FC<GameTabsProps> = ({
   role,
   stock,
   cost,
+  roundCost = 0,
   gameCode,
   allRolesData,
   playerStocks,
   pendingOrders,
   incomingDeliveries,
+  upcomingDeliveries = { nextRound: 0, futureRound: 0 },
+  customerOrder = null,
+  lastDownstreamOrder = null,
+  costParameters = { shortageCost: 10, holdingCost: 5 },
+  currentGameData = [],
   onJoinGame,
   onPlaceOrder,
   onNextRound,
@@ -65,7 +86,13 @@ const GameTabs: React.FC<GameTabsProps> = ({
           role={role} 
           stock={stock} 
           cost={cost}
+          roundCost={roundCost}
           gameCode={gameCode}
+          customerOrder={customerOrder}
+          upcomingDeliveries={upcomingDeliveries}
+          lastDownstreamOrder={lastDownstreamOrder}
+          costParameters={costParameters}
+          gameData={currentGameData}
           onPlaceOrder={onPlaceOrder} 
         />
       </TabsContent>
@@ -77,6 +104,8 @@ const GameTabs: React.FC<GameTabsProps> = ({
           playerStocks={playerStocks}
           pendingOrders={pendingOrders}
           incomingDeliveries={incomingDeliveries}
+          customerOrder={customerOrder}
+          costParameters={costParameters}
           onNextRound={onNextRound}
           chartDataKeys={chartDataKeys}
         />

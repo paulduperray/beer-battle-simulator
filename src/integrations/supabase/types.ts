@@ -12,44 +12,59 @@ export type Database = {
       game_rounds: {
         Row: {
           created_at: string | null
+          customer_order: number
           distributor_cost: number
+          distributor_round_cost: number
           distributor_stock: number
           factory_cost: number
+          factory_round_cost: number
           factory_stock: number
           game_id: string | null
           id: string
           retailer_cost: number
+          retailer_round_cost: number
           retailer_stock: number
           round: number
           wholesaler_cost: number
+          wholesaler_round_cost: number
           wholesaler_stock: number
         }
         Insert: {
           created_at?: string | null
+          customer_order?: number
           distributor_cost?: number
-          distributor_stock?: number
+          distributor_round_cost?: number
+          distributor_stock: number
           factory_cost?: number
-          factory_stock?: number
+          factory_round_cost?: number
+          factory_stock: number
           game_id?: string | null
           id?: string
           retailer_cost?: number
-          retailer_stock?: number
+          retailer_round_cost?: number
+          retailer_stock: number
           round: number
           wholesaler_cost?: number
-          wholesaler_stock?: number
+          wholesaler_round_cost?: number
+          wholesaler_stock: number
         }
         Update: {
           created_at?: string | null
+          customer_order?: number
           distributor_cost?: number
+          distributor_round_cost?: number
           distributor_stock?: number
           factory_cost?: number
+          factory_round_cost?: number
           factory_stock?: number
           game_id?: string | null
           id?: string
           retailer_cost?: number
+          retailer_round_cost?: number
           retailer_stock?: number
           round?: number
           wholesaler_cost?: number
+          wholesaler_round_cost?: number
           wholesaler_stock?: number
         }
         Relationships: [
@@ -67,21 +82,27 @@ export type Database = {
           created_at: string | null
           current_round: number | null
           game_code: string
+          holding_cost: number
           id: string
+          shortage_cost: number
           status: string | null
         }
         Insert: {
           created_at?: string | null
           current_round?: number | null
           game_code: string
+          holding_cost?: number
           id?: string
+          shortage_cost?: number
           status?: string | null
         }
         Update: {
           created_at?: string | null
           current_round?: number | null
           game_code?: string
+          holding_cost?: number
           id?: string
+          shortage_cost?: number
           status?: string | null
         }
         Relationships: []
@@ -97,6 +118,7 @@ export type Database = {
           quantity: number
           round: number
           source: string
+          status: string
         }
         Insert: {
           created_at?: string | null
@@ -108,6 +130,7 @@ export type Database = {
           quantity: number
           round: number
           source: string
+          status?: string
         }
         Update: {
           created_at?: string | null
@@ -119,6 +142,7 @@ export type Database = {
           quantity?: number
           round?: number
           source?: string
+          status?: string
         }
         Relationships: [
           {
