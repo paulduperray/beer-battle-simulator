@@ -29,9 +29,15 @@ interface GameTabsProps {
     holdingCost: number;
   };
   currentGameData?: any[];
+  gameStatus?: string;
+  allRoles?: string[];
   onJoinGame: (gameCode: string, role: string) => void;
   onPlaceOrder: (order: number) => void;
   onNextRound: () => void;
+  onStartGame?: () => void;
+  onPauseGame?: () => void;
+  onResumeGame?: () => void;
+  onLogout?: () => void;
   chartDataKeys: {
     stocks: string[];
     costs: string[];
@@ -55,9 +61,15 @@ const GameTabs: React.FC<GameTabsProps> = ({
   lastDownstreamOrder = null,
   costParameters = { shortageCost: 10, holdingCost: 5 },
   currentGameData = [],
+  gameStatus = 'active',
+  allRoles = [],
   onJoinGame,
   onPlaceOrder,
   onNextRound,
+  onStartGame,
+  onPauseGame,
+  onResumeGame,
+  onLogout,
   chartDataKeys,
 }) => {
   return (
@@ -93,7 +105,9 @@ const GameTabs: React.FC<GameTabsProps> = ({
           lastDownstreamOrder={lastDownstreamOrder}
           costParameters={costParameters}
           gameData={currentGameData}
-          onPlaceOrder={onPlaceOrder} 
+          gameStatus={gameStatus}
+          onPlaceOrder={onPlaceOrder}
+          onLogout={onLogout}
         />
       </TabsContent>
       
@@ -106,7 +120,13 @@ const GameTabs: React.FC<GameTabsProps> = ({
           incomingDeliveries={incomingDeliveries}
           customerOrder={customerOrder}
           costParameters={costParameters}
+          gameStatus={gameStatus}
+          allRoles={allRoles}
           onNextRound={onNextRound}
+          onStartGame={onStartGame}
+          onPauseGame={onPauseGame}
+          onResumeGame={onResumeGame}
+          onLogout={onLogout}
           chartDataKeys={chartDataKeys}
         />
       </TabsContent>

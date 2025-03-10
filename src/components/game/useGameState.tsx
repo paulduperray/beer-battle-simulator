@@ -9,7 +9,10 @@ import {
   placeOrder,
   updateCosts, 
   advanceToNextRound, 
-  getAdminViewData
+  getAdminViewData,
+  pauseGame,
+  resumeGame,
+  startGame
 } from "@/lib/supabase/gameService";
 import { supabase } from "@/lib/supabase/client";
 
@@ -49,6 +52,8 @@ export const useGameState = () => {
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingCount, setLoadingCount] = useState<number>(0);
+  const [gameStatus, setGameStatus] = useState<string>("active");
+  const [allRoles, setAllRoles] = useState<string[]>([]);
   
   // Function to load game data based on role
   const loadGameData = useCallback(async () => {
@@ -66,6 +71,17 @@ export const useGameState = () => {
       
       setLoading(true);
       console.log(`Loading game data for game ID: ${gameId}, role: ${role}`);
+      
+      // Get game status
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('status')
+        .eq('id', gameId)
+        .single();
+
+      if (gameData) {
+        setGameStatus(gameData.status);
+      }
       
       if (role === "admin") {
         // Load admin view data
@@ -85,6 +101,16 @@ export const useGameState = () => {
             setIncomingDeliveries(adminData.incomingDeliveries || {});
             setCustomerOrder(adminData.customerOrder);
             setCostParameters(adminData.costs || { shortageCost: 10, holdingCost: 5 });
+
+            // Get all roles in the game
+            const { data: players, error } = await supabase
+              .from('players')
+              .select('role')
+              .eq('game_id', gameId);
+              
+            if (!error && players) {
+              setAllRoles(players.map(p => p.role));
+            }
           }
           // Reset loading counter on success
           setLoadingCount(0);
@@ -151,14 +177,15 @@ export const useGameState = () => {
         setGameId(game.id);
         setGameCode(game.game_code);
         setRole(newRole);
+        setGameStatus(game.status || 'active');
         
         // Set view based on role
         if (newRole === "admin") {
           setView("admin");
-          toast(`Joined game as admin`);
+          toast.success(`Joined game as admin`);
         } else {
           setView("player");
-          toast(`Joined game as ${newRole}`);
+          toast.success(`Joined game as ${newRole}`);
         }
         
         // Reset loading counter after a successful connection
@@ -173,8 +200,9 @@ export const useGameState = () => {
             setGameCode(newGame.game_code);
             setRole(newRole);
             setView("admin");
+            setGameStatus(newGame.status || 'active');
             
-            toast("Game created successfully!");
+            toast.success("Game created successfully!");
             // Reset loading counter
             setLoadingCount(0);
           } else {
@@ -197,6 +225,12 @@ export const useGameState = () => {
     
     try {
       setLoading(true);
+      
+      // Verify game isn't paused
+      if (gameStatus === 'paused') {
+        toast.error("Cannot place orders while game is paused");
+        return;
+      }
       
       // Determine the source and destination for the order
       let source, destination;
@@ -270,6 +304,12 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
+      // Check if game is paused
+      if (gameStatus === 'paused') {
+        toast.error("Game is paused. Please resume the game first.");
+        return;
+      }
+      
       const { game, newRound } = await advanceToNextRound(gameId);
       
       if (game && newRound) {
@@ -286,6 +326,91 @@ export const useGameState = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartGame = async () => {
+    if (!gameId) return;
+    
+    try {
+      setLoading(true);
+      
+      const result = await startGame(gameId);
+      
+      if (result) {
+        toast.success("Game started successfully!");
+        setGameStatus('active');
+        
+        // Reload game data to reflect changes
+        await loadGameData();
+      } else {
+        throw new Error("Failed to start game");
+      }
+    } catch (error) {
+      console.error("Error starting game:", error);
+      toast.error("Error: Failed to start game");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePauseGame = async () => {
+    if (!gameId) return;
+    
+    try {
+      setLoading(true);
+      
+      const result = await pauseGame(gameId);
+      
+      if (result) {
+        toast.success("Game paused successfully!");
+        setGameStatus('paused');
+        
+        // Reload game data to reflect changes
+        await loadGameData();
+      } else {
+        throw new Error("Failed to pause game");
+      }
+    } catch (error) {
+      console.error("Error pausing game:", error);
+      toast.error("Error: Failed to pause game");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResumeGame = async () => {
+    if (!gameId) return;
+    
+    try {
+      setLoading(true);
+      
+      const result = await resumeGame(gameId);
+      
+      if (result) {
+        toast.success("Game resumed successfully!");
+        setGameStatus('active');
+        
+        // Reload game data to reflect changes
+        await loadGameData();
+      } else {
+        throw new Error("Failed to resume game");
+      }
+    } catch (error) {
+      console.error("Error resuming game:", error);
+      toast.error("Error: Failed to resume game");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setGameId("");
+    setGameCode("");
+    setRole("");
+    setView("join");
+    setCurrentGameData([]);
+    setAllRolesData([]);
+    toast.success("Successfully logged out");
   };
   
   // Show stock chart keys based on role or admin view
@@ -323,10 +448,16 @@ export const useGameState = () => {
     lastDownstreamOrder,
     costParameters,
     loading,
+    gameStatus,
+    allRoles,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,
     handleNextRound,
+    handleStartGame,
+    handlePauseGame,
+    handleResumeGame,
+    handleLogout,
     getDataKeys,
   };
 };

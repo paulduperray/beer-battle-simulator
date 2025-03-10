@@ -27,10 +27,16 @@ const GameView: React.FC = () => {
     lastDownstreamOrder,
     costParameters,
     loading,
+    gameStatus,
+    allRoles,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,
     handleNextRound,
+    handleStartGame,
+    handlePauseGame,
+    handleResumeGame,
+    handleLogout,
     getDataKeys
   } = useGameState();
 
@@ -78,9 +84,15 @@ const GameView: React.FC = () => {
             lastDownstreamOrder={lastDownstreamOrder}
             costParameters={costParameters}
             currentGameData={currentGameData}
+            gameStatus={gameStatus}
+            allRoles={allRoles}
             onJoinGame={handleJoinGame}
             onPlaceOrder={handlePlaceOrder}
             onNextRound={handleNextRound}
+            onStartGame={handleStartGame}
+            onPauseGame={handlePauseGame}
+            onResumeGame={handleResumeGame}
+            onLogout={handleLogout}
             chartDataKeys={getDataKeys()}
           />
         </div>

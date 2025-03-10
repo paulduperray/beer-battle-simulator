@@ -1,12 +1,14 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Package, ArrowDown, ArrowUp, TrendingUp, Clock, Hash, AlertTriangle, DollarSign, ShoppingCart } from "lucide-react";
+import { Package, ArrowDown, ArrowUp, TrendingUp, Clock, Hash, AlertTriangle, DollarSign, ShoppingCart, LogOut } from "lucide-react";
 import StockChart from "./StockChart";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface PlayerViewProps {
   role: string;
@@ -25,7 +27,9 @@ interface PlayerViewProps {
     holdingCost: number;
   };
   gameData?: any[];
+  gameStatus?: string;
   onPlaceOrder: (order: number) => void;
+  onLogout?: () => void;
 }
 
 const PlayerView: React.FC<PlayerViewProps> = ({ 
@@ -39,10 +43,47 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   lastDownstreamOrder = null,
   costParameters = { shortageCost: 10, holdingCost: 5 },
   gameData = [],
-  onPlaceOrder 
+  gameStatus = 'active',
+  onPlaceOrder,
+  onLogout = () => toast.error("Logout function not implemented")
 }) => {
   const [order, setOrder] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastValues, setLastValues] = useState({
+    stock,
+    cost,
+    roundCost,
+    lastDownstreamOrder
+  });
+
+  useEffect(() => {
+    // Check for changes to display notifications
+    if (stock !== lastValues.stock) {
+      // Stock has changed
+      const diff = stock - lastValues.stock;
+      if (diff > 0) {
+        toast.success(`Received ${diff} units of inventory`);
+      } else if (diff < 0 && lastValues.stock > 0) {
+        toast.info(`Shipped ${Math.abs(diff)} units from inventory`);
+      }
+    }
+
+    if (roundCost > 0 && roundCost !== lastValues.roundCost) {
+      toast.info(`Cost this round: ${roundCost}€`);
+    }
+
+    if (lastDownstreamOrder !== lastValues.lastDownstreamOrder && lastDownstreamOrder !== null) {
+      toast.info(`New order received: ${lastDownstreamOrder} units`);
+    }
+
+    // Update last values
+    setLastValues({
+      stock,
+      cost,
+      roundCost,
+      lastDownstreamOrder
+    });
+  }, [stock, cost, roundCost, lastDownstreamOrder, lastValues]);
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
@@ -109,15 +150,39 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           <h2 className="text-2xl font-medium tracking-tight">{roleTitles[role] || role} Dashboard</h2>
           <p className="text-muted-foreground">{roleDescriptions[role] || "Manage your inventory and orders"}</p>
         </div>
-        {gameCode && (
-          <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          {gameCode && (
             <Badge variant="secondary" className="flex items-center gap-1">
               <Hash className="h-3 w-3" />
               Game ID: {gameCode}
             </Badge>
-          </div>
-        )}
+          )}
+          <Badge variant="outline" className={`flex items-center gap-2 ${
+            gameStatus === 'paused' ? 'bg-amber-100 text-amber-800' : 
+            'bg-blue-100 text-blue-800'
+          }`}>
+            <Clock className="h-4 w-4" />
+            {gameStatus === 'paused' ? 'Game Paused' : 'Game Active'}
+          </Badge>
+          <Button 
+            onClick={onLogout} 
+            variant="ghost"
+            className="flex items-center"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
+
+      {gameStatus === 'paused' && (
+        <Alert className="mb-6 bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTitle>Game Paused</AlertTitle>
+          <AlertDescription>
+            The game has been paused by the administrator. You cannot place orders until the game is resumed.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <Card className="beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
@@ -201,7 +266,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
             <div className="space-y-3">
               <div className="flex justify-between items-center p-2 bg-secondary/30 rounded-md">
                 <span className="font-medium">Next round:</span>
-                <Badge variant="outline" className="bg-blue-100">
+                <Badge variant="outline" className={`bg-blue-100 ${upcomingDeliveries.nextRound > 0 ? 'animate-pulse' : ''}`}>
                   {upcomingDeliveries.nextRound} units
                 </Badge>
               </div>
@@ -305,12 +370,13 @@ const PlayerView: React.FC<PlayerViewProps> = ({
                   value={order || ""}
                   onChange={handleOrderChange}
                   className="input-field"
+                  disabled={gameStatus === 'paused'}
                 />
               </div>
               <Button 
                 onClick={handleSubmit} 
                 className="beer-button" 
-                disabled={isSubmitting}
+                disabled={isSubmitting || gameStatus === 'paused'}
               >
                 {isSubmitting ? "Submitting..." : "Place Order"}
               </Button>

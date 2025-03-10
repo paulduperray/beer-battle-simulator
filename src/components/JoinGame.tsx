@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, LogIn, List } from "lucide-react";
+import { Plus, LogIn, List, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface JoinGameProps {
   onJoin: (gameId: string, role: string) => void;
@@ -17,38 +18,85 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [gameId, setGameId] = useState("");
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [recentGames, setRecentGames] = useState<{id: string, game_code: string}[]>([]);
+  const [recentGames, setRecentGames] = useState<{id: string, game_code: string, status: string}[]>([]);
   const [view, setView] = useState<"join" | "create">("join");
   const [createdGameId, setCreatedGameId] = useState<string | null>(null);
+  const [takenRoles, setTakenRoles] = useState<string[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch recent games when component mounts
   useEffect(() => {
-    const fetchRecentGames = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('games')
-          .select('id, game_code')
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (error) throw error;
-        setRecentGames(data || []);
-      } catch (error) {
-        console.error("Error fetching recent games:", error);
-      }
-    };
-
     fetchRecentGames();
   }, []);
 
-  const handleJoin = () => {
+  // Check which roles are already taken
+  useEffect(() => {
     if (!gameId) {
-      toast.error("Please enter a game ID");
+      setTakenRoles([]);
+      return;
+    }
+    
+    const checkTakenRoles = async () => {
+      try {
+        // First find the game
+        const { data: game, error: gameError } = await supabase
+          .from('games')
+          .select('id')
+          .eq('game_code', gameId)
+          .maybeSingle();
+          
+        if (gameError || !game) {
+          return;
+        }
+        
+        // Then check which roles are taken
+        const { data: players, error: playersError } = await supabase
+          .from('players')
+          .select('role')
+          .eq('game_id', game.id);
+          
+        if (!playersError && players) {
+          setTakenRoles(players.map(p => p.role));
+        }
+      } catch (error) {
+        console.error("Error checking taken roles:", error);
+      }
+    };
+    
+    checkTakenRoles();
+  }, [gameId]);
+
+  const fetchRecentGames = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, game_code, status')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setRecentGames(data || []);
+    } catch (error) {
+      console.error("Error fetching recent games:", error);
+    }
+  };
+
+  const handleJoin = () => {
+    setErrorMessage(null);
+    
+    if (!gameId) {
+      setErrorMessage("Please enter a game ID");
       return;
     }
     
     if (!role) {
-      toast.error("Please select a role");
+      setErrorMessage("Please select a role");
+      return;
+    }
+    
+    // Check if role is already taken
+    if (takenRoles.includes(role) && role !== 'admin') {
+      setErrorMessage(`The role "${role}" is already taken in this game. Please select another role.`);
       return;
     }
     
@@ -96,8 +144,10 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   };
 
   const handleCreate = async () => {
+    setErrorMessage(null);
+    
     if (!role) {
-      toast.error("Please select a role");
+      setErrorMessage("Please select a role");
       return;
     }
     
@@ -112,14 +162,14 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
 
       // Update the recent games list
       setRecentGames(prev => [
-        { id: 'new', game_code: nextGameId },
+        { id: 'new', game_code: nextGameId, status: 'pending' },
         ...prev
       ]);
 
       toast.success(`Game ${nextGameId} created successfully!`);
     } catch (error) {
       console.error("Error creating game:", error);
-      toast.error("Failed to create game. Please try again.");
+      setErrorMessage("Failed to create game. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +177,12 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
 
   const selectRecentGame = (gameCode: string) => {
     setGameId(gameCode);
+    setErrorMessage(null);
+  };
+  
+  const refreshGames = () => {
+    fetchRecentGames();
+    toast.success("Game list refreshed");
   };
 
   return (
@@ -141,6 +197,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   onClick={() => {
                     setView("join");
                     setCreatedGameId(null);
+                    setErrorMessage(null);
                   }}
                   className="flex items-center"
                 >
@@ -149,7 +206,10 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                 </Button>
                 <Button 
                   variant={view === "create" ? "default" : "outline"} 
-                  onClick={() => setView("create")}
+                  onClick={() => {
+                    setView("create");
+                    setErrorMessage(null);
+                  }}
                   className="flex items-center"
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -167,6 +227,12 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
               </p>
             </div>
             
+            {errorMessage && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-4">
               {view === "join" && (
                 <div className="space-y-2">
@@ -178,22 +244,44 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                       placeholder="Enter game ID"
                       className="input-field"
                       value={gameId}
-                      onChange={(e) => setGameId(e.target.value)}
+                      onChange={(e) => {
+                        setGameId(e.target.value);
+                        setErrorMessage(null);
+                      }}
                     />
-                    {recentGames.length > 0 && (
-                      <Select onValueChange={selectRecentGame}>
-                        <SelectTrigger className="w-[120px]">
-                          <List className="h-4 w-4" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" className="bg-background">
-                          {recentGames.map((game) => (
-                            <SelectItem key={game.id} value={game.game_code}>
-                              {game.game_code}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <div className="flex space-x-1">
+                      {recentGames.length > 0 && (
+                        <Select onValueChange={selectRecentGame}>
+                          <SelectTrigger className="w-[100px]">
+                            <List className="h-4 w-4" />
+                          </SelectTrigger>
+                          <SelectContent position="popper" className="bg-background">
+                            {recentGames.map((game) => (
+                              <SelectItem key={game.id} value={game.game_code}>
+                                <div className="flex items-center gap-2">
+                                  <span>{game.game_code}</span>
+                                  <Badge variant="outline" className={
+                                    game.status === 'active' ? 'bg-green-100 text-green-800' :
+                                    game.status === 'paused' ? 'bg-amber-100 text-amber-800' :
+                                    'bg-blue-100 text-blue-800'
+                                  }>
+                                    {game.status}
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={refreshGames}
+                        title="Refresh game list"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -211,15 +299,29 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
               
               <div className="space-y-2">
                 <Label htmlFor="role">Select Role</Label>
-                <Select value={role} onValueChange={setRole}>
+                <Select 
+                  value={role} 
+                  onValueChange={(val) => {
+                    setRole(val);
+                    setErrorMessage(null);
+                  }}
+                >
                   <SelectTrigger className="input-field">
                     <SelectValue placeholder="Choose your role" />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
-                    <SelectItem value="factory">Factory</SelectItem>
-                    <SelectItem value="distributor">Distributor</SelectItem>
-                    <SelectItem value="wholesaler">Wholesaler</SelectItem>
-                    <SelectItem value="retailer">Retailer</SelectItem>
+                    <SelectItem value="factory" disabled={takenRoles.includes("factory")}>
+                      Factory {takenRoles.includes("factory") ? "(Taken)" : ""}
+                    </SelectItem>
+                    <SelectItem value="distributor" disabled={takenRoles.includes("distributor")}>
+                      Distributor {takenRoles.includes("distributor") ? "(Taken)" : ""}
+                    </SelectItem>
+                    <SelectItem value="wholesaler" disabled={takenRoles.includes("wholesaler")}>
+                      Wholesaler {takenRoles.includes("wholesaler") ? "(Taken)" : ""}
+                    </SelectItem>
+                    <SelectItem value="retailer" disabled={takenRoles.includes("retailer")}>
+                      Retailer {takenRoles.includes("retailer") ? "(Taken)" : ""}
+                    </SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
                 </Select>

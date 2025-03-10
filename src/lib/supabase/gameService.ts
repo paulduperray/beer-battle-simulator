@@ -5,3 +5,4 @@ export * from './services/gameDataService';
 export * from './services/orderService';
 export * from './services/roundService';
 export * from './services/realtimeService';
+export * from './services/gameStatusService';
