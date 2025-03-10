@@ -3,6 +3,8 @@ import { supabase } from '../client';
 
 export async function createGame(gameCode: string) {
   try {
+    console.log(`Creating new game with code: ${gameCode}`);
+    
     // Create new game with active status
     const { data: gameData, error: gameError } = await supabase
       .from('games')
@@ -20,6 +22,8 @@ export async function createGame(gameCode: string) {
       console.error('Error creating game:', gameError);
       return null;
     }
+    
+    console.log(`Successfully created game with ID: ${gameData.id}, code: ${gameCode}`);
 
     // Create initial round data with proper values
     const { error: roundError } = await supabase

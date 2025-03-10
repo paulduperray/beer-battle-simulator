@@ -139,14 +139,21 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     setIsLoading(true);
     try {
       const nextGameId = await getNextGameId();
+      console.log(`About to create game with ID: ${nextGameId}`);
+      setGameId(nextGameId); // Set the gameId for join
       setCreatedGameId(nextGameId);
       
+      // Only call onJoin which will handle both creation and joining
       await onJoin(nextGameId, role);
-
+      
+      // Update recent games list
       setRecentGames(prev => [
         { id: 'new', game_code: nextGameId, status: 'active' },
         ...prev
       ]);
+      
+      // Refresh the game list to see the newly created game
+      await fetchRecentGames();
 
       if (role === 'admin') {
         setView("admin");
