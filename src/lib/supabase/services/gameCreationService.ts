@@ -63,7 +63,37 @@ export async function joinGame(gameCode: string, role: string) {
   try {
     console.log(`Attempting to join game with code: ${gameCode}, role: ${role}`);
     
-    // Find the game by code - use eq instead of single to avoid PGRST116 error
+    if (role === 'admin') {
+      // For admin role, try to find the game first
+      const { data: games, error: gameError } = await supabase
+        .from('games')
+        .select('*')
+        .eq('game_code', gameCode);
+      
+      if (gameError) {
+        console.error('Error finding game for admin:', gameError);
+        return { game: null, player: null };
+      }
+      
+      // If game exists, return it
+      if (games && games.length > 0) {
+        const game = games[0];
+        console.log(`Admin found existing game with ID ${game.id}`);
+        return { game, player: { role: 'admin' } };
+      }
+      
+      // If no game exists, create a new one
+      console.log(`Admin creating new game with code ${gameCode}`);
+      const newGame = await createGame(gameCode);
+      if (newGame) {
+        return { game: newGame, player: { role: 'admin' } };
+      } else {
+        console.error('Failed to create game for admin');
+        return { game: null, player: null };
+      }
+    }
+    
+    // For non-admin roles, find the game first
     const { data: games, error: gameError } = await supabase
       .from('games')
       .select('*')
@@ -83,13 +113,6 @@ export async function joinGame(gameCode: string, role: string) {
     const gameData = games[0];
     console.log(`Found game with ID ${gameData.id} for code ${gameCode}`);
 
-    // For the admin role, we need to check if the game exists but don't need to create a new player
-    if (role === 'admin') {
-      // Return the game data directly without creating a new player
-      console.log(`Admin joining game ${gameData.id} without creating player entry`);
-      return { game: gameData, player: { role: 'admin' } };
-    }
-
     // Check if a player with this role already exists for this game
     const { data: existingPlayer, error: findError } = await supabase
       .from('players')
@@ -102,6 +125,7 @@ export async function joinGame(gameCode: string, role: string) {
       console.error('Error finding existing player:', findError);
     }
     
+    // Allow joining even if the role is already taken
     if (existingPlayer) {
       console.log(`Found existing player with role ${role} for game ${gameData.id}`);
       return { game: gameData, player: existingPlayer };

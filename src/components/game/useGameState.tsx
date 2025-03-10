@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -168,12 +167,11 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
-      // Try to join an existing game
       console.log(`Joining game with code: ${newGameCode}, role: ${newRole}`);
       const { game, player } = await joinGame(newGameCode, newRole);
       
       if (game) {
-        // Game found, proceed with joining
+        // Game found or created, proceed with joining
         setGameId(game.id);
         setGameCode(game.game_code);
         setRole(newRole);
@@ -191,26 +189,8 @@ export const useGameState = () => {
         // Reset loading counter after a successful connection
         setLoadingCount(0);
       } else {
-        // Game not found, create new game if admin
-        if (newRole === "admin") {
-          console.log(`Creating new game with code: ${newGameCode}`);
-          const newGame = await createGame(newGameCode);
-          if (newGame) {
-            setGameId(newGame.id);
-            setGameCode(newGame.game_code);
-            setRole(newRole);
-            setView("admin");
-            setGameStatus(newGame.status || 'active');
-            
-            toast.success("Game created successfully!");
-            // Reset loading counter
-            setLoadingCount(0);
-          } else {
-            throw new Error("Failed to create game");
-          }
-        } else {
-          throw new Error(`Game with code ${newGameCode} not found`);
-        }
+        // Failed to join or create game
+        throw new Error(`Failed to join or create game with code ${newGameCode}`);
       }
     } catch (error) {
       console.error("Error joining game:", error);
