@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,11 +88,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     
     if (!role) {
       setErrorMessage("Please select a role");
-      return;
-    }
-    
-    if (takenRoles.includes(role) && role !== 'admin') {
-      setErrorMessage(`The role "${role}" is already taken in this game. Please select another role.`);
       return;
     }
     
@@ -299,17 +295,21 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                     <SelectValue placeholder="Choose your role" />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
-                    <SelectItem value="factory" disabled={takenRoles.includes("factory")}>
-                      Factory {takenRoles.includes("factory") ? "(Taken)" : ""}
+                    <SelectItem value="factory">
+                      Factory
+                      {takenRoles.includes("factory") && <span className="ml-2 text-xs text-muted-foreground">(Already used)</span>}
                     </SelectItem>
-                    <SelectItem value="distributor" disabled={takenRoles.includes("distributor")}>
-                      Distributor {takenRoles.includes("distributor") ? "(Taken)" : ""}
+                    <SelectItem value="distributor">
+                      Distributor
+                      {takenRoles.includes("distributor") && <span className="ml-2 text-xs text-muted-foreground">(Already used)</span>}
                     </SelectItem>
-                    <SelectItem value="wholesaler" disabled={takenRoles.includes("wholesaler")}>
-                      Wholesaler {takenRoles.includes("wholesaler") ? "(Taken)" : ""}
+                    <SelectItem value="wholesaler">
+                      Wholesaler
+                      {takenRoles.includes("wholesaler") && <span className="ml-2 text-xs text-muted-foreground">(Already used)</span>}
                     </SelectItem>
-                    <SelectItem value="retailer" disabled={takenRoles.includes("retailer")}>
-                      Retailer {takenRoles.includes("retailer") ? "(Taken)" : ""}
+                    <SelectItem value="retailer">
+                      Retailer
+                      {takenRoles.includes("retailer") && <span className="ml-2 text-xs text-muted-foreground">(Already used)</span>}
                     </SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
