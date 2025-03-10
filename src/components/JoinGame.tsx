@@ -148,12 +148,12 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
       await onJoin(nextGameId, role);
 
       setRecentGames(prev => [
-        { id: 'new', game_code: nextGameId, status: 'pending' },
+        { id: 'new', game_code: nextGameId, status: 'active' },
         ...prev
       ]);
 
       if (role === 'admin') {
-        setView('admin');
+        setView("admin");
       }
 
       toast.success(`Game ${nextGameId} created successfully!`);
@@ -192,7 +192,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   className="flex items-center"
                 >
                   <LogIn className="mr-2 h-4 w-4" />
-                  Join Game
+                  <span>Join Game</span>
                 </Button>
                 <Button 
                   variant={view === "create" ? "default" : "outline"} 
@@ -203,7 +203,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   className="flex items-center"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Game
+                  <span>Create Game</span>
                 </Button>
               </div>
               

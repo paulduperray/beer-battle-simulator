@@ -3,7 +3,7 @@ import { supabase } from '../client';
 
 export async function createGame(gameCode: string) {
   try {
-    // Create new game
+    // Create new game with active status
     const { data: gameData, error: gameError } = await supabase
       .from('games')
       .insert({ 
@@ -11,7 +11,7 @@ export async function createGame(gameCode: string) {
         shortage_cost: 10,
         holding_cost: 5,
         current_round: 1,
-        status: 'active'
+        status: 'active'  // Ensure game is created with active status
       })
       .select('*')
       .single();
@@ -21,7 +21,7 @@ export async function createGame(gameCode: string) {
       return null;
     }
 
-    // Create initial round data
+    // Create initial round data with proper values
     const { error: roundError } = await supabase
       .from('game_rounds')
       .insert({
@@ -30,7 +30,16 @@ export async function createGame(gameCode: string) {
         factory_stock: 10,
         distributor_stock: 10,
         wholesaler_stock: 10,
-        retailer_stock: 10
+        retailer_stock: 10,
+        factory_cost: 100,
+        distributor_cost: 120,
+        wholesaler_cost: 150,
+        retailer_cost: 180,
+        factory_round_cost: 0,
+        distributor_round_cost: 0,
+        wholesaler_round_cost: 0,
+        retailer_round_cost: 0,
+        customer_order: 5
       });
 
     if (roundError) {
