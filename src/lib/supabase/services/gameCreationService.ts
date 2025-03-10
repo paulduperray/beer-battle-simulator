@@ -57,18 +57,26 @@ export async function createGame(gameCode: string) {
 
 export async function joinGame(gameCode: string, role: string) {
   try {
-    // Find the game by code
-    const { data: gameData, error: gameError } = await supabase
+    console.log(`Attempting to join game with code: ${gameCode}, role: ${role}`);
+    
+    // Find the game by code - use eq instead of single to avoid PGRST116 error
+    const { data: games, error: gameError } = await supabase
       .from('games')
       .select('*')
-      .eq('game_code', gameCode)
-      .single();
+      .eq('game_code', gameCode);
 
     if (gameError) {
       console.error('Error finding game:', gameError);
       return { game: null, player: null };
     }
-
+    
+    // Check if we found any games
+    if (!games || games.length === 0) {
+      console.error(`No game found with code ${gameCode}`);
+      return { game: null, player: null };
+    }
+    
+    const gameData = games[0];
     console.log(`Found game with ID ${gameData.id} for code ${gameCode}`);
 
     // For the admin role, we need to check if the game exists but don't need to create a new player
@@ -85,6 +93,10 @@ export async function joinGame(gameCode: string, role: string) {
       .eq('game_id', gameData.id)
       .eq('role', role)
       .maybeSingle();
+    
+    if (findError) {
+      console.error('Error finding existing player:', findError);
+    }
     
     if (existingPlayer) {
       console.log(`Found existing player with role ${role} for game ${gameData.id}`);
