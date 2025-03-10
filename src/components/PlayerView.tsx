@@ -299,7 +299,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
         </Card>
       </div>
 
-      {gameData.length > 0 && (
+      {currentGameData && currentGameData.length > 0 && (
         <Card className="mt-4 beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Performance History</CardTitle>
@@ -308,7 +308,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           <CardContent>
             <div className="h-[300px]">
               <StockChart 
-                data={gameData} 
+                data={currentGameData} 
                 dataKeys={["stock", "cost"]}
                 title=""
                 description=""

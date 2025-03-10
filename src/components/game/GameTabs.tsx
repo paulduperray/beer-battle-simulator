@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import JoinGame from "../JoinGame";
@@ -105,7 +106,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
           upcomingDeliveries={upcomingDeliveries}
           lastDownstreamOrder={lastDownstreamOrder}
           costParameters={costParameters}
-          gameData={currentGameData}
+          currentGameData={currentGameData}
           gameStatus={gameStatus}
           currentRound={currentRound}
           onPlaceOrder={onPlaceOrder}

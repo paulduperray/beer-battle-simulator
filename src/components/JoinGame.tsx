@@ -19,7 +19,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [recentGames, setRecentGames] = useState<{id: string, game_code: string, status: string}[]>([]);
-  const [view, setView] = useState<"join" | "create">("join");
+  const [view, setView] = useState<"join" | "create" | "admin">("join");
   const [createdGameId, setCreatedGameId] = useState<string | null>(null);
   const [takenRoles, setTakenRoles] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
