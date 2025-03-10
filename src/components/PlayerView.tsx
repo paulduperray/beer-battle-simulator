@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   Card,
@@ -12,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { ExclamationTriangleIcon } from "lucide-react";
 import { PackageIcon, TruckIcon, WarehouseIcon, StoreIcon, LogOutIcon, ShoppingCartIcon, DatabaseIcon, BanknoteIcon, BadgeInfoIcon } from "lucide-react";
 import StockChart from "./StockChart";
 
@@ -117,7 +116,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     }
   };
 
-  // Reset hasOrderedThisRound when the round changes
   React.useEffect(() => {
     setHasOrderedThisRound(false);
   }, [currentRound]);
@@ -146,7 +144,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
       </div>
 
       {gameStatus === 'paused' && (
-        <Alert variant="warning">
+        <Alert variant="destructive">
           <ExclamationTriangleIcon className="h-4 w-4" />
           <AlertTitle>Game Paused</AlertTitle>
           <AlertDescription>
