@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   Card,
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { PackageIcon, TruckIcon, WarehouseIcon, StoreIcon, LogOutIcon, ShoppingCartIcon, DatabaseIcon, BanknoteIcon, BadgeInfoIcon } from "lucide-react";
 import StockChart from "./StockChart";
 
@@ -145,7 +146,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
 
       {gameStatus === 'paused' && (
         <Alert variant="destructive">
-          <ExclamationTriangleIcon className="h-4 w-4" />
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Game Paused</AlertTitle>
           <AlertDescription>
             The game is currently paused by the administrator. You cannot place orders until it resumes.
