@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { Plus, LogIn, List, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 
 interface JoinGameProps {
   onJoin: (gameId: string, role: string) => void;
@@ -24,12 +24,10 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [takenRoles, setTakenRoles] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch recent games when component mounts
   useEffect(() => {
     fetchRecentGames();
   }, []);
 
-  // Check which roles are already taken
   useEffect(() => {
     if (!gameId) {
       setTakenRoles([]);
@@ -38,7 +36,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     
     const checkTakenRoles = async () => {
       try {
-        // First find the game
         const { data: game, error: gameError } = await supabase
           .from('games')
           .select('id')
@@ -49,7 +46,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
           return;
         }
         
-        // Then check which roles are taken
         const { data: players, error: playersError } = await supabase
           .from('players')
           .select('role')
@@ -94,7 +90,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
       return;
     }
     
-    // Check if role is already taken
     if (takenRoles.includes(role) && role !== 'admin') {
       setErrorMessage(`The role "${role}" is already taken in this game. Please select another role.`);
       return;
@@ -102,10 +97,8 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     
     setIsLoading(true);
     
-    // Join the game
     onJoin(gameId, role);
     
-    // Reset loading after a short delay
     setTimeout(() => {
       setIsLoading(false);
     }, 600);
@@ -113,7 +106,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
 
   const getNextGameId = async () => {
     try {
-      // Get the highest existing game code that is numeric
       const { data, error } = await supabase
         .from('games')
         .select('game_code')
@@ -122,14 +114,12 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
 
       if (error) throw error;
 
-      let nextId = 1; // Default start at 1
+      let nextId = 1;
       
       if (data && data.length > 0) {
-        // Try to parse the highest game code as a number
         const highestGame = data[0].game_code;
         const parsedId = parseInt(highestGame, 10);
         
-        // If it's a valid number, increment it
         if (!isNaN(parsedId)) {
           nextId = parsedId + 1;
         }
@@ -138,7 +128,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
       return nextId.toString();
     } catch (error) {
       console.error("Error getting next game ID:", error);
-      // Fallback to a random ID if there's an error
       return Math.floor(Math.random() * 1000).toString();
     }
   };
@@ -153,18 +142,19 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     
     setIsLoading(true);
     try {
-      // Get next sequential game ID
       const nextGameId = await getNextGameId();
       setCreatedGameId(nextGameId);
       
-      // Join the game
-      onJoin(nextGameId, role);
+      await onJoin(nextGameId, role);
 
-      // Update the recent games list
       setRecentGames(prev => [
         { id: 'new', game_code: nextGameId, status: 'pending' },
         ...prev
       ]);
+
+      if (role === 'admin') {
+        setView('admin');
+      }
 
       toast.success(`Game ${nextGameId} created successfully!`);
     } catch (error) {
@@ -286,7 +276,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                 </div>
               )}
               
-              {/* Display the created game ID */}
               {view === "create" && createdGameId && (
                 <div className="space-y-2 animate-fade-in">
                   <Label htmlFor="createdGameId">Your Game ID</Label>

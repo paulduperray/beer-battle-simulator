@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,8 +25,9 @@ interface PlayerViewProps {
     shortageCost: number;
     holdingCost: number;
   };
-  gameData?: any[];
+  currentGameData?: any[];
   gameStatus?: string;
+  currentRound?: number;
   onPlaceOrder: (order: number) => void;
   onLogout?: () => void;
 }
@@ -42,48 +42,19 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   upcomingDeliveries = { nextRound: 0, futureRound: 0 },
   lastDownstreamOrder = null,
   costParameters = { shortageCost: 10, holdingCost: 5 },
-  gameData = [],
+  currentGameData = [],
   gameStatus = 'active',
+  currentRound = 1,
   onPlaceOrder,
   onLogout = () => toast.error("Logout function not implemented")
 }) => {
   const [order, setOrder] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastValues, setLastValues] = useState({
-    stock,
-    cost,
-    roundCost,
-    lastDownstreamOrder
-  });
+  const [hasOrderedThisRound, setHasOrderedThisRound] = useState(false);
 
   useEffect(() => {
-    // Check for changes to display notifications
-    if (stock !== lastValues.stock) {
-      // Stock has changed
-      const diff = stock - lastValues.stock;
-      if (diff > 0) {
-        toast.success(`Received ${diff} units of inventory`);
-      } else if (diff < 0 && lastValues.stock > 0) {
-        toast.info(`Shipped ${Math.abs(diff)} units from inventory`);
-      }
-    }
-
-    if (roundCost > 0 && roundCost !== lastValues.roundCost) {
-      toast.info(`Cost this round: ${roundCost}€`);
-    }
-
-    if (lastDownstreamOrder !== lastValues.lastDownstreamOrder && lastDownstreamOrder !== null) {
-      toast.info(`New order received: ${lastDownstreamOrder} units`);
-    }
-
-    // Update last values
-    setLastValues({
-      stock,
-      cost,
-      roundCost,
-      lastDownstreamOrder
-    });
-  }, [stock, cost, roundCost, lastDownstreamOrder, lastValues]);
+    setHasOrderedThisRound(false);
+  }, [currentRound]);
 
   const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
@@ -91,18 +62,17 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   };
 
   const handleSubmit = () => {
-    if (order >= 0) {
+    if (order >= 0 && !hasOrderedThisRound) {
       setIsSubmitting(true);
-      // Simulate loading for better UX
       setTimeout(() => {
         onPlaceOrder(order);
         setIsSubmitting(false);
-        setOrder(0); // Reset order after submission
+        setOrder(0);
+        setHasOrderedThisRound(true);
       }, 400);
     }
   };
 
-  // Map roles to readable names
   const roleTitles: Record<string, string> = {
     factory: "Factory",
     distributor: "Distributor", 
@@ -117,7 +87,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     retailer: "Sell directly to consumers"
   };
 
-  // Determine stock status for visual indicators
   const getStockStatus = () => {
     if (stock < 0) return "negative";
     if (stock < 5) return "low";
@@ -163,6 +132,10 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           }`}>
             <Clock className="h-4 w-4" />
             {gameStatus === 'paused' ? 'Game Paused' : 'Game Active'}
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Hash className="h-3 w-3" />
+            Round: {currentRound}
           </Badge>
           <Button 
             onClick={onLogout} 
@@ -326,7 +299,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
         </Card>
       </div>
 
-      {/* Performance Chart */}
       {gameData.length > 0 && (
         <Card className="mt-4 beer-card overflow-hidden border border-border/60 bg-card/95 backdrop-blur-sm">
           <CardHeader>
@@ -370,17 +342,24 @@ const PlayerView: React.FC<PlayerViewProps> = ({
                   value={order || ""}
                   onChange={handleOrderChange}
                   className="input-field"
-                  disabled={gameStatus === 'paused'}
+                  disabled={gameStatus === 'paused' || hasOrderedThisRound}
                 />
               </div>
               <Button 
                 onClick={handleSubmit} 
                 className="beer-button" 
-                disabled={isSubmitting || gameStatus === 'paused'}
+                disabled={isSubmitting || gameStatus === 'paused' || hasOrderedThisRound}
               >
-                {isSubmitting ? "Submitting..." : "Place Order"}
+                {isSubmitting ? "Submitting..." : hasOrderedThisRound ? "Already Ordered" : "Place Order"}
               </Button>
             </div>
+            {hasOrderedThisRound && (
+              <Alert>
+                <AlertDescription>
+                  You have already placed an order for round {currentRound}. Please wait for the admin to advance to the next round.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>

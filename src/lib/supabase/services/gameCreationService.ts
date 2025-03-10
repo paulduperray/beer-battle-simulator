@@ -3,23 +3,43 @@ import { supabase } from '../client';
 
 export async function createGame(gameCode: string) {
   try {
-    const { data, error } = await supabase
+    // Create new game
+    const { data: gameData, error: gameError } = await supabase
       .from('games')
       .insert({ 
         game_code: gameCode,
         shortage_cost: 10,
-        holding_cost: 5
+        holding_cost: 5,
+        current_round: 1,
+        status: 'active'
       })
       .select('*')
       .single();
 
-    if (error) {
-      console.error('Error creating game:', error);
+    if (gameError) {
+      console.error('Error creating game:', gameError);
       return null;
     }
 
-    console.log(`Created game with ID ${data.id} and code ${gameCode}`);
-    return data;
+    // Create initial round data
+    const { error: roundError } = await supabase
+      .from('game_rounds')
+      .insert({
+        game_id: gameData.id,
+        round: 1,
+        factory_stock: 10,
+        distributor_stock: 10,
+        wholesaler_stock: 10,
+        retailer_stock: 10
+      });
+
+    if (roundError) {
+      console.error('Error creating initial round:', roundError);
+      return null;
+    }
+
+    console.log(`Created game with ID ${gameData.id} and code ${gameCode}`);
+    return gameData;
   } catch (error) {
     console.error('Error in createGame function:', error);
     return null;

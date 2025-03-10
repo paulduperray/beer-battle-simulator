@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import JoinGame from "../JoinGame";
@@ -42,6 +41,7 @@ interface GameTabsProps {
     stocks: string[];
     costs: string[];
   };
+  currentRound?: number;
 }
 
 const GameTabs: React.FC<GameTabsProps> = ({
@@ -71,6 +71,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
   onResumeGame,
   onLogout,
   chartDataKeys,
+  currentRound = 1,
 }) => {
   return (
     <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
@@ -106,6 +107,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
           costParameters={costParameters}
           gameData={currentGameData}
           gameStatus={gameStatus}
+          currentRound={currentRound}
           onPlaceOrder={onPlaceOrder}
           onLogout={onLogout}
         />
