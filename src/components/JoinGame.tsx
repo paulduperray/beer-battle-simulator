@@ -140,24 +140,14 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     try {
       const nextGameId = await getNextGameId();
       console.log(`About to create game with ID: ${nextGameId}`);
-      setGameId(nextGameId); // Set the gameId for join
+      setGameId(nextGameId);
       setCreatedGameId(nextGameId);
       
       // Only call onJoin which will handle both creation and joining
       await onJoin(nextGameId, role);
       
-      // Update recent games list
-      setRecentGames(prev => [
-        { id: 'new', game_code: nextGameId, status: 'active' },
-        ...prev
-      ]);
-      
-      // Refresh the game list to see the newly created game
+      // Explicitly refresh the game list to see the newly created game
       await fetchRecentGames();
-
-      if (role === 'admin') {
-        setView("admin");
-      }
 
       toast.success(`Game ${nextGameId} created successfully!`);
     } catch (error) {
@@ -304,19 +294,19 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   <SelectContent className="bg-background">
                     <SelectItem value="factory">
                       Factory
-                      {takenRoles.includes("factory") && <span className="ml-2 text-xs text-amber-500">(Already used)</span>}
+                      {takenRoles.includes("factory") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
                     </SelectItem>
                     <SelectItem value="distributor">
                       Distributor
-                      {takenRoles.includes("distributor") && <span className="ml-2 text-xs text-amber-500">(Already used)</span>}
+                      {takenRoles.includes("distributor") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
                     </SelectItem>
                     <SelectItem value="wholesaler">
                       Wholesaler
-                      {takenRoles.includes("wholesaler") && <span className="ml-2 text-xs text-amber-500">(Already used)</span>}
+                      {takenRoles.includes("wholesaler") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
                     </SelectItem>
                     <SelectItem value="retailer">
                       Retailer
-                      {takenRoles.includes("retailer") && <span className="ml-2 text-xs text-amber-500">(Already used)</span>}
+                      {takenRoles.includes("retailer") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
                     </SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
