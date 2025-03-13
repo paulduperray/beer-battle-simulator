@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -393,7 +394,7 @@ export const useGameState = () => {
         throw new Error("Failed to get current round");
       }
       
-      console.log(`Admin placing order to retailer in game ${gameId}, current round: ${game.current_round}, quantity: ${quantity}`);
+      console.log(`Admin placing order from retailer to customer in game ${gameId}, current round: ${game.current_round}, quantity: ${quantity}`);
       
       const order = await placeAdminOrder(
         gameId,
@@ -404,7 +405,7 @@ export const useGameState = () => {
       );
       
       if (order) {
-        toast.success(`Admin order placed: ${quantity} units to retailer`);
+        toast.success(`Admin order placed: ${quantity} units from retailer`);
         
         await loadGameData();
       } else {
