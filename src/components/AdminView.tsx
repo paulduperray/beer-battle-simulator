@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import StockChart from "./StockChart";
 import { PlayCircle, Clock, AlertTriangle, Hash, Package, DollarSign, ShoppingCart, PauseCircle, Play, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 interface AdminViewProps {
   gameData: any[];
@@ -25,6 +26,7 @@ interface AdminViewProps {
   onPauseGame?: () => void;
   onResumeGame?: () => void;
   onLogout?: () => void;
+  onAdminOrderToRetailer?: (quantity: number) => void;
   chartDataKeys?: {
     stocks: string[];
     costs: string[];
@@ -46,6 +48,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   onPauseGame = () => toast.error("Pause game function not implemented"),
   onResumeGame = () => toast.error("Resume game function not implemented"),
   onLogout = () => toast.error("Logout function not implemented"),
+  onAdminOrderToRetailer = () => toast.error("Admin order function not implemented"),
   chartDataKeys = {
     stocks: ["factory_stock", "distributor_stock", "wholesaler_stock", "retailer_stock"],
     costs: ["factory_cost", "distributor_cost", "wholesaler_cost", "retailer_cost"]
@@ -74,6 +77,19 @@ const AdminView: React.FC<AdminViewProps> = ({
   const allRolesFilled = ['factory', 'distributor', 'wholesaler', 'retailer'].every(role => 
     allRoles.includes(role)
   );
+
+  // State for admin order quantity
+  const [adminOrderQuantity, setAdminOrderQuantity] = useState<number>(5);
+
+  // Function to handle admin order submission
+  const handleAdminOrderSubmit = () => {
+    if (adminOrderQuantity > 0) {
+      onAdminOrderToRetailer(adminOrderQuantity);
+      toast.success(`Admin order of ${adminOrderQuantity} units to retailer placed`);
+    } else {
+      toast.error("Order quantity must be greater than 0");
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -171,6 +187,40 @@ const AdminView: React.FC<AdminViewProps> = ({
                 <span className="text-red-600 ml-2">(Waiting for all roles to join)</span>
               )}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Admin Order Panel */}
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-start">
+          <ShoppingCart className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
+          <div className="w-full">
+            <h4 className="font-medium text-blue-800">Admin Order Controls</h4>
+            <p className="text-sm text-blue-700 mb-3">
+              Place an order directly to the retailer to simulate customer demand
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="w-full max-w-xs">
+                <Input
+                  type="number"
+                  min="1"
+                  value={adminOrderQuantity}
+                  onChange={(e) => setAdminOrderQuantity(Number(e.target.value))}
+                  className="border-blue-300"
+                  placeholder="Quantity"
+                />
+              </div>
+              <Button 
+                onClick={handleAdminOrderSubmit}
+                variant="outline"
+                className="beer-button flex items-center bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200"
+                disabled={gameStatus !== 'active' || adminOrderQuantity <= 0}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Place Order to Retailer
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -37,6 +37,7 @@ const GameView: React.FC = () => {
     handlePauseGame,
     handleResumeGame,
     handleLogout,
+    handleAdminOrderToRetailer,
     getDataKeys
   } = useGameState();
 
@@ -93,6 +94,7 @@ const GameView: React.FC = () => {
             onPauseGame={handlePauseGame}
             onResumeGame={handleResumeGame}
             onLogout={handleLogout}
+            onAdminOrderToRetailer={handleAdminOrderToRetailer}
             chartDataKeys={getDataKeys()}
           />
         </div>

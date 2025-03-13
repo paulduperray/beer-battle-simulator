@@ -38,6 +38,7 @@ interface GameTabsProps {
   onPauseGame?: () => void;
   onResumeGame?: () => void;
   onLogout?: () => void;
+  onAdminOrderToRetailer?: (quantity: number) => void;
   chartDataKeys: {
     stocks: string[];
     costs: string[];
@@ -71,6 +72,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
   onPauseGame,
   onResumeGame,
   onLogout,
+  onAdminOrderToRetailer,
   chartDataKeys,
   currentRound = 1,
 }) => {
@@ -130,6 +132,7 @@ const GameTabs: React.FC<GameTabsProps> = ({
           onPauseGame={onPauseGame}
           onResumeGame={onResumeGame}
           onLogout={onLogout}
+          onAdminOrderToRetailer={onAdminOrderToRetailer}
           chartDataKeys={chartDataKeys}
         />
       </TabsContent>

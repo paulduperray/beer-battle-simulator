@@ -6,6 +6,7 @@ import {
   getGameData, 
   getRoleViewData,
   placeOrder,
+  placeAdminOrder,
   updateCosts, 
   advanceToNextRound, 
   getAdminViewData,
@@ -53,13 +54,11 @@ export const useGameState = () => {
   const [loadingCount, setLoadingCount] = useState<number>(0);
   const [gameStatus, setGameStatus] = useState<string>("active");
   const [allRoles, setAllRoles] = useState<string[]>([]);
-  
-  // Function to load game data based on role
+
   const loadGameData = useCallback(async () => {
     if (!gameId) return;
     
     try {
-      // Protection against constant loading
       setLoadingCount(prev => {
         if (prev > 5) {
           console.log("Too many consecutive loading attempts, interrupting");
@@ -71,7 +70,6 @@ export const useGameState = () => {
       setLoading(true);
       console.log(`Loading game data for game ID: ${gameId}, role: ${role}`);
       
-      // Get game status
       const { data: gameData } = await supabase
         .from('games')
         .select('status')
@@ -83,14 +81,12 @@ export const useGameState = () => {
       }
       
       if (role === "admin") {
-        // Load admin view data
         const data = await getGameData(gameId);
         console.log("Admin data loaded:", data);
         
         if (data) {
           setAllRolesData(data.rounds || []);
           
-          // Also load current stocks and orders
           const adminData = await getAdminViewData(gameId);
           console.log("Admin view data:", adminData);
           
@@ -101,7 +97,6 @@ export const useGameState = () => {
             setCustomerOrder(adminData.customerOrder);
             setCostParameters(adminData.costs || { shortageCost: 10, holdingCost: 5 });
 
-            // Get all roles in the game
             const { data: players, error } = await supabase
               .from('players')
               .select('role')
@@ -111,11 +106,9 @@ export const useGameState = () => {
               setAllRoles(players.map(p => p.role));
             }
           }
-          // Reset loading counter on success
           setLoadingCount(0);
         }
       } else {
-        // Load player view data using the new unified function
         const playerData = await getRoleViewData(gameId, role);
         console.log(`${role} view data loaded:`, playerData);
         
@@ -135,7 +128,6 @@ export const useGameState = () => {
           
           setLastDownstreamOrder(playerData.lastDownstreamOrder);
           
-          // Also load historical data for charts
           const historyData = await getGameData(gameId);
           if (historyData && historyData.rounds) {
             setCurrentGameData(historyData.rounds.map(round => ({
@@ -146,7 +138,6 @@ export const useGameState = () => {
             })));
           }
           
-          // Reset loading counter on success
           setLoadingCount(0);
         }
       }
@@ -171,13 +162,11 @@ export const useGameState = () => {
       const { game, player } = await joinGame(newGameCode, newRole);
       
       if (game) {
-        // Game found or created, proceed with joining
         setGameId(game.id);
         setGameCode(game.game_code);
         setRole(newRole);
         setGameStatus(game.status || 'active');
         
-        // Set view based on role
         if (newRole === "admin") {
           setView("admin");
           toast.success(`Joined game as admin`);
@@ -186,10 +175,8 @@ export const useGameState = () => {
           toast.success(`Joined game as ${newRole}`);
         }
         
-        // Reset loading counter after a successful connection
         setLoadingCount(0);
       } else {
-        // Failed to join or create game
         throw new Error(`Failed to join or create game with code ${newGameCode}`);
       }
     } catch (error) {
@@ -206,13 +193,11 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
-      // Verify game isn't paused
       if (gameStatus === 'paused') {
         toast.error("Cannot place orders while game is paused");
         return;
       }
       
-      // Determine the source and destination for the order
       let source, destination;
       if (role === "retailer") {
         source = "wholesaler";
@@ -230,7 +215,6 @@ export const useGameState = () => {
         throw new Error("Invalid role");
       }
       
-      // First, get current game round
       const { data: game } = await supabase
         .from('games')
         .select('current_round')
@@ -244,25 +228,22 @@ export const useGameState = () => {
       
       console.log(`Placing order in game ${gameId}, current round: ${game.current_round}`);
       
-      // Place the order with delivery_round parameter
       const order = await placeOrder(
         gameId,
         game.current_round,
         orderAmount,
         source,
         destination,
-        game.current_round + 2 // Set delivery_round to 2 rounds ahead
+        game.current_round + 2
       );
       
       if (order) {
-        // Update costs to reflect the order placement
         const costIncrease = orderAmount * getCostMultiplier(role);
         const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
         
         if (costsUpdated) {
           toast.success("Order Placed: You ordered " + orderAmount + " units");
           
-          // Reload game data to reflect changes
           await loadGameData();
         } else {
           throw new Error("Failed to update costs");
@@ -284,7 +265,6 @@ export const useGameState = () => {
     try {
       setLoading(true);
       
-      // Check if game is paused
       if (gameStatus === 'paused') {
         toast.error("Game is paused. Please resume the game first.");
         return;
@@ -295,7 +275,6 @@ export const useGameState = () => {
       if (game && newRound) {
         toast.success("Advanced to round " + game.current_round);
         
-        // Reload game data to reflect changes
         await loadGameData();
       } else {
         throw new Error("Failed to advance to next round");
@@ -320,7 +299,6 @@ export const useGameState = () => {
         toast.success("Game started successfully!");
         setGameStatus('active');
         
-        // Reload game data to reflect changes
         await loadGameData();
       } else {
         throw new Error("Failed to start game");
@@ -345,7 +323,6 @@ export const useGameState = () => {
         toast.success("Game paused successfully!");
         setGameStatus('paused');
         
-        // Reload game data to reflect changes
         await loadGameData();
       } else {
         throw new Error("Failed to pause game");
@@ -370,7 +347,6 @@ export const useGameState = () => {
         toast.success("Game resumed successfully!");
         setGameStatus('active');
         
-        // Reload game data to reflect changes
         await loadGameData();
       } else {
         throw new Error("Failed to resume game");
@@ -392,8 +368,56 @@ export const useGameState = () => {
     setAllRolesData([]);
     toast.success("Successfully logged out");
   };
-  
-  // Show stock chart keys based on role or admin view
+
+  const handleAdminOrderToRetailer = async (quantity: number) => {
+    if (!gameId || quantity <= 0) {
+      toast.error("Invalid order quantity");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      if (gameStatus === 'paused') {
+        toast.error("Cannot place orders while game is paused");
+        return;
+      }
+      
+      const { data: game } = await supabase
+        .from('games')
+        .select('current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (!game) {
+        throw new Error("Failed to get current round");
+      }
+      
+      console.log(`Admin placing order to retailer in game ${gameId}, current round: ${game.current_round}, quantity: ${quantity}`);
+      
+      const order = await placeAdminOrder(
+        gameId,
+        game.current_round,
+        quantity,
+        'retailer',
+        game.current_round + 1
+      );
+      
+      if (order) {
+        toast.success(`Admin order placed: ${quantity} units to retailer`);
+        
+        await loadGameData();
+      } else {
+        throw new Error("Failed to place admin order");
+      }
+    } catch (error) {
+      console.error("Error placing admin order:", error);
+      toast.error("Error: Failed to place admin order");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDataKeys = () => {
     if (role === "admin") {
       return {
@@ -438,6 +462,7 @@ export const useGameState = () => {
     handlePauseGame,
     handleResumeGame,
     handleLogout,
+    handleAdminOrderToRetailer,
     getDataKeys,
   };
 };

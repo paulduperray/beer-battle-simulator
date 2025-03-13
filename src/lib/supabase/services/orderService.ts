@@ -55,6 +55,19 @@ export async function placeOrder(
   }
 }
 
+export async function placeAdminOrder(
+  gameId: string,
+  round: number,
+  quantity: number,
+  destination: string = 'retailer',
+  delivery_round: number
+) {
+  console.log(`Admin placing order: Game ${gameId}, Round ${round}, Quantity ${quantity}, To ${destination}, Delivery in round ${delivery_round}`);
+  
+  // This is a special admin function that places an order directly to the destination
+  return placeOrder(gameId, round, quantity, 'admin', destination, delivery_round);
+}
+
 export async function processOrders(gameId: string, round: number) {
   console.log(`Processing orders for game ${gameId}, round ${round}`);
   
