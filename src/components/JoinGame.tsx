@@ -20,7 +20,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [recentGames, setRecentGames] = useState<{id: string, game_code: string, status: string}[]>([]);
-  const [view, setView] = useState<"join" | "create" | "admin">("join");
+  const [view, setView] = useState<"join" | "create">("join");
   const [createdGameId, setCreatedGameId] = useState<string | null>(null);
   const [takenRoles, setTakenRoles] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -136,19 +136,33 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
       return;
     }
     
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+      
+      // Get the next game ID
       const nextGameId = await getNextGameId();
       console.log(`About to create game with ID: ${nextGameId}`);
+      
+      // Set the game ID and created game ID
       setGameId(nextGameId);
       setCreatedGameId(nextGameId);
       
-      // Only call onJoin which will handle both creation and joining
-      await onJoin(nextGameId, role);
+      // Call onJoin with admin role first to create the game
+      if (role !== 'admin') {
+        console.log("Creating game as admin first");
+        await onJoin(nextGameId, 'admin');
+        
+        // Then call onJoin with the selected role
+        console.log(`Now joining as ${role}`);
+        await onJoin(nextGameId, role);
+      } else {
+        // If role is admin, just join as admin
+        await onJoin(nextGameId, role);
+      }
       
-      // Explicitly refresh the game list to see the newly created game
+      // Refresh the game list
       await fetchRecentGames();
-
+      
       toast.success(`Game ${nextGameId} created successfully!`);
     } catch (error) {
       console.error("Error creating game:", error);

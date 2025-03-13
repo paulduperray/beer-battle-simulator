@@ -45,7 +45,7 @@ export async function createGame(gameCode: string) {
         current_round: 1,
         status: 'active'  // Ensure game is created with active status
       })
-      .select('*')
+      .select()
       .single();
 
     if (gameError) {
@@ -95,90 +95,72 @@ export async function joinGame(gameCode: string, role: string) {
     
     // For admin role, create the game if it doesn't exist
     if (role === 'admin') {
-      // For admin role, try to find the game first
-      const { data: games, error: gameError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('game_code', gameCode);
-      
-      if (gameError) {
-        console.error('Error finding game for admin:', gameError);
-        return { game: null, player: null };
-      }
-      
-      // If game exists, return it
-      if (games && games.length > 0) {
-        const game = games[0];
-        console.log(`Admin found existing game with ID ${game.id}`);
-        return { game, player: { role: 'admin' } };
-      }
-      
-      // If no game exists, create a new one
-      console.log(`Admin creating new game with code ${gameCode}`);
+      console.log(`Admin role detected, creating game with code ${gameCode}`);
       const newGame = await createGame(gameCode);
       if (newGame) {
+        console.log(`Admin created/joined game with ID ${newGame.id}`);
         return { game: newGame, player: { role: 'admin' } };
       } else {
         console.error('Failed to create game for admin');
         return { game: null, player: null };
       }
-    } else {
-      // For non-admin roles, find the game first
-      const { data: games, error: gameError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('game_code', gameCode);
-
-      if (gameError) {
-        console.error('Error finding game:', gameError);
-        return { game: null, player: null };
-      }
-      
-      // Check if we found any games
-      if (!games || games.length === 0) {
-        console.error(`No game found with code ${gameCode}`);
-        return { game: null, player: null };
-      }
-      
-      const gameData = games[0];
-      console.log(`Found game with ID ${gameData.id} for code ${gameCode}`);
-
-      // Check if a player with this role already exists for this game
-      const { data: existingPlayer, error: findError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('game_id', gameData.id)
-        .eq('role', role)
-        .maybeSingle();
-      
-      if (findError) {
-        console.error('Error finding existing player:', findError);
-      }
-      
-      // Allow joining even if the role is already taken
-      if (existingPlayer) {
-        console.log(`Found existing player with role ${role} for game ${gameData.id}`);
-        return { game: gameData, player: existingPlayer };
-      }
-      
-      // If no player with this role exists, create a new one
-      const { data: playerData, error: playerError } = await supabase
-        .from('players')
-        .insert({
-          game_id: gameData.id,
-          role: role
-        })
-        .select('*')
-        .single();
-
-      if (playerError) {
-        console.error('Error creating player:', playerError);
-        return { game: gameData, player: null };
-      }
-
-      console.log(`Created player with role ${role} for game ${gameData.id}`);
-      return { game: gameData, player: playerData };
     }
+    
+    // For non-admin roles, find the game
+    const { data: games, error: gameError } = await supabase
+      .from('games')
+      .select('*')
+      .eq('game_code', gameCode);
+
+    if (gameError) {
+      console.error('Error finding game:', gameError);
+      return { game: null, player: null };
+    }
+    
+    // Check if we found any games
+    if (!games || games.length === 0) {
+      console.error(`No game found with code ${gameCode}`);
+      return { game: null, player: null };
+    }
+    
+    const gameData = games[0];
+    console.log(`Found game with ID ${gameData.id} for code ${gameCode}`);
+
+    // Check if a player with this role already exists for this game
+    const { data: existingPlayer, error: findError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameData.id)
+      .eq('role', role)
+      .maybeSingle();
+    
+    if (findError) {
+      console.error('Error finding existing player:', findError);
+    }
+    
+    // Allow joining even if the role is already taken
+    if (existingPlayer) {
+      console.log(`Found existing player with role ${role} for game ${gameData.id}`);
+      return { game: gameData, player: existingPlayer };
+    }
+    
+    // If no player with this role exists, create a new one
+    const { data: playerData, error: playerError } = await supabase
+      .from('players')
+      .insert({
+        game_id: gameData.id,
+        role: role
+      })
+      .select()
+      .single();
+
+    if (playerError) {
+      console.error('Error creating player:', playerError);
+      return { game: gameData, player: null };
+    }
+
+    console.log(`Created player with role ${role} for game ${gameData.id}`);
+    return { game: gameData, player: playerData };
   } catch (error) {
     console.error('Error in joinGame function:', error);
     return { game: null, player: null };
