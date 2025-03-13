@@ -176,7 +176,6 @@ const AdminView: React.FC<AdminViewProps> = ({
           <div>
             <h4 className="font-medium text-amber-800">Game Information</h4>
             <p className="text-sm text-amber-700">
-              Current customer demand: <strong>{customerOrder} units</strong> | 
               Shortage cost: <strong>{costParameters.shortageCost}€ per unit</strong> | 
               Holding cost: <strong>{costParameters.holdingCost}€ per unit</strong>
             </p>
@@ -358,12 +357,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                 No incoming deliveries
               </div>
             )}
-            <div className="mt-4 p-2 bg-amber-100 rounded-md flex items-center">
-              <ShoppingCart className="h-4 w-4 mr-2 text-amber-600" />
-              <span className="text-sm text-amber-800">
-                Customer demand: <strong>{customerOrder} units</strong>
-              </span>
-            </div>
           </CardContent>
         </Card>
       </div>
