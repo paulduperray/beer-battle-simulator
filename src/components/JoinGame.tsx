@@ -308,19 +308,19 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   <SelectContent className="bg-background">
                     <SelectItem value="factory">
                       Factory
-                      {takenRoles.includes("factory") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
+                      {takenRoles.includes("factory") && <span className="ml-2 text-xs text-amber-500">(Taken)</span>}
                     </SelectItem>
                     <SelectItem value="distributor">
                       Distributor
-                      {takenRoles.includes("distributor") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
+                      {takenRoles.includes("distributor") && <span className="ml-2 text-xs text-amber-500">(Taken)</span>}
                     </SelectItem>
                     <SelectItem value="wholesaler">
                       Wholesaler
-                      {takenRoles.includes("wholesaler") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
+                      {takenRoles.includes("wholesaler") && <span className="ml-2 text-xs text-amber-500">(Taken)</span>}
                     </SelectItem>
                     <SelectItem value="retailer">
                       Retailer
-                      {takenRoles.includes("retailer") && <span className="ml-2 text-xs text-amber-500">(Can still join)</span>}
+                      {takenRoles.includes("retailer") && <span className="ml-2 text-xs text-amber-500">(Taken)</span>}
                     </SelectItem>
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
