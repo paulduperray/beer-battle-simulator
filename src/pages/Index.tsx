@@ -2,7 +2,7 @@
 import React from "react";
 import GameView from "@/components/GameView";
 import { Toaster } from "sonner";
-import { Beer, Truck, Warehouse, Store, ArrowRight } from "lucide-react";
+import { Beer } from "lucide-react";
 
 const Index = () => {
   return (
@@ -11,27 +11,10 @@ const Index = () => {
       
       {/* Header decoration */}
       <div className="w-full bg-amber-500/10 border-b border-amber-200 py-3 mb-6 relative overflow-hidden">
-        <div className="container mx-auto px-4 flex items-center justify-between">
+        <div className="container mx-auto px-4">
           <div className="flex items-center gap-2">
             <Beer className="h-8 w-8 text-amber-600" />
             <h1 className="text-2xl font-bold text-amber-800">Beer Distribution Game</h1>
-          </div>
-          <div className="hidden md:flex items-center text-amber-700 text-sm gap-3">
-            <span className="flex items-center gap-1">
-              <Store className="h-4 w-4" /> Retailer
-            </span>
-            <ArrowRight className="h-3 w-3" />
-            <span className="flex items-center gap-1">
-              <Warehouse className="h-4 w-4" /> Wholesaler
-            </span>
-            <ArrowRight className="h-3 w-3" />
-            <span className="flex items-center gap-1">
-              <Truck className="h-4 w-4" /> Distributor
-            </span>
-            <ArrowRight className="h-3 w-3" />
-            <span className="flex items-center gap-1">
-              <Beer className="h-4 w-4" /> Factory
-            </span>
           </div>
         </div>
         
