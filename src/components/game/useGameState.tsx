@@ -80,6 +80,7 @@ export const useGameState = () => {
 
       if (gameData) {
         setGameStatus(gameData.status);
+        
         if (gameData.current_round !== currentRound) {
           console.log(`Round changed from ${currentRound} to ${gameData.current_round}`);
           setCurrentRound(gameData.current_round);
@@ -251,7 +252,7 @@ export const useGameState = () => {
           throw new Error("Failed to update costs");
         }
       } else {
-        throw new Error("Failed to place order");
+        toast.error("Failed to place order. You may have already ordered this round.");
       }
     } catch (error) {
       console.error("Error placing order:", error);

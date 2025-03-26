@@ -115,7 +115,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
       setHasOrderedThisRound(true);
       setShowOrderConfirm(false);
       setOrderAmount("0");
-      toast.success(`Order placed: ${amount} units`);
     }
   };
 
