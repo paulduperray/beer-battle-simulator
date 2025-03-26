@@ -45,16 +45,18 @@ const Index = () => {
       <Toaster position="top-right" />
       
       {/* Add global CSS for the beer bubbles animation */}
-      <style jsx global>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0);
+      <style>
+        {`
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(-120px);
+            }
           }
-          50% {
-            transform: translateY(-120px);
-          }
-        }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
