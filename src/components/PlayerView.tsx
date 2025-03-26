@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -11,10 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, AlertCircle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { PackageIcon, TruckIcon, WarehouseIcon, StoreIcon, LogOutIcon, ShoppingCartIcon, DatabaseIcon, BanknoteIcon, BadgeInfoIcon } from "lucide-react";
 import StockChart from "./StockChart";
-import { toast } from "sonner";
 
 interface PlayerViewProps {
   role: string;
@@ -35,7 +35,6 @@ interface PlayerViewProps {
   currentGameData?: any[];
   gameStatus?: string;
   currentRound?: number;
-  hasOrderedInCurrentRound?: boolean;
   onPlaceOrder: (order: number) => void;
   onLogout?: () => void;
 }
@@ -53,15 +52,11 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   currentGameData = [],
   gameStatus = 'active',
   currentRound = 1,
-  hasOrderedInCurrentRound = false,
   onPlaceOrder,
   onLogout
 }) => {
   const [orderAmount, setOrderAmount] = useState<string>("0");
-  const [hasOrderedThisRound, setHasOrderedThisRound] = useState<boolean>(hasOrderedInCurrentRound);
-  const [showOrderConfirm, setShowOrderConfirm] = useState(false);
-  const [lastRound, setLastRound] = useState(currentRound);
-  const [isOrderButtonDisabled, setIsOrderButtonDisabled] = useState(false);
+  const [hasOrderedThisRound, setHasOrderedThisRound] = useState(false);
 
   const getRoleIcon = () => {
     switch (role) {
@@ -100,33 +95,16 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     }
   };
 
-  const handlePrepareOrder = () => {
+  const handleSubmitOrder = () => {
     const amount = Number(orderAmount);
-    if (amount <= 0) {
-      toast.error("Order amount must be greater than zero");
-      return;
-    }
-    setShowOrderConfirm(true);
-  };
-
-  const handleConfirmOrder = () => {
-    const amount = Number(orderAmount);
-    if (amount > 0) {
-      setIsOrderButtonDisabled(true);
+    if (amount >= 0) {
       onPlaceOrder(amount);
       setHasOrderedThisRound(true);
-      setShowOrderConfirm(false);
-      setOrderAmount("0");
-      toast.success(`Order placed: ${amount} units`);
     }
-  };
-
-  const handleCancelOrder = () => {
-    setShowOrderConfirm(false);
   };
 
   const isOrderDisabled = () => {
-    return gameStatus === 'paused' || parseInt(orderAmount) <= 0 || hasOrderedThisRound || isOrderButtonDisabled;
+    return gameStatus === 'paused' || parseInt(orderAmount) < 0 || hasOrderedThisRound;
   };
 
   const getOrderButtonText = () => {
@@ -139,29 +117,9 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     }
   };
 
-  useEffect(() => {
-    console.log(`PlayerView: Current round: ${currentRound}, Last round: ${lastRound}, hasOrderedInCurrentRound: ${hasOrderedInCurrentRound}`);
-    if (currentRound !== lastRound) {
-      setLastRound(currentRound);
-      setHasOrderedThisRound(false);
-      setIsOrderButtonDisabled(false);
-      toast.info(`Round ${currentRound} has started!`);
-      console.log(`Round changed from ${lastRound} to ${currentRound}, reset hasOrderedThisRound to false`);
-    }
-  }, [currentRound, lastRound, hasOrderedInCurrentRound]);
-
-  useEffect(() => {
-    console.log(`PlayerView: hasOrderedInCurrentRound changed to ${hasOrderedInCurrentRound}`);
-    setHasOrderedThisRound(hasOrderedInCurrentRound);
-  }, [hasOrderedInCurrentRound]);
-
-  useEffect(() => {
-    if (gameStatus === 'paused') {
-      toast.info("Game has been paused by the administrator");
-    } else if (gameStatus === 'active' && lastRound > 1) {
-      toast.info("Game has been resumed");
-    }
-  }, [gameStatus, lastRound]);
+  React.useEffect(() => {
+    setHasOrderedThisRound(false);
+  }, [currentRound]);
 
   return (
     <div className="space-y-6">
@@ -210,11 +168,6 @@ const PlayerView: React.FC<PlayerViewProps> = ({
               <div className="flex flex-col p-4 bg-accent/20 rounded-lg">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Current Stock</div>
                 <div className="text-3xl font-bold">{stock} units</div>
-                {stock < 0 && (
-                  <div className="mt-2 text-sm text-red-500">
-                    You have a backlog of {Math.abs(stock)} units that will be filled when stock becomes available.
-                  </div>
-                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -256,14 +209,13 @@ const PlayerView: React.FC<PlayerViewProps> = ({
                 </div>
               </div>
               
-              {role === "retailer" && customerOrder !== null && (
+              {role === "retailer" && (
                 <div className="flex flex-col p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground mb-1">Customer Demand</div>
                   <div className="text-2xl font-bold flex items-center">
                     <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                    {customerOrder} units
+                    {customerOrder !== null ? `${customerOrder} units` : "Unknown"}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">Set by admin for current round</div>
                 </div>
               )}
               
@@ -318,53 +270,28 @@ const PlayerView: React.FC<PlayerViewProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {showOrderConfirm ? (
-            <div className="space-y-4">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Confirm Your Order</AlertTitle>
-                <AlertDescription>
-                  Are you sure you want to order {orderAmount} units? This action cannot be undone.
-                </AlertDescription>
-              </Alert>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={handleCancelOrder}>
-                  Cancel
-                </Button>
-                <Button onClick={handleConfirmOrder} className="beer-button">
-                  Confirm Order
-                </Button>
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <div className="mb-2 text-sm font-medium">
+                Order Quantity
               </div>
-            </div>
-          ) : (
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <div className="mb-2 text-sm font-medium">
-                  Order Quantity
-                </div>
-                <Input
-                  type="text"
-                  value={orderAmount}
-                  onChange={handleOrderChange}
-                  disabled={isOrderDisabled()}
-                  placeholder="Enter quantity"
-                  className="w-full"
-                />
-                {parseInt(orderAmount) <= 0 && orderAmount !== "" && (
-                  <div className="text-xs text-red-500 mt-1">
-                    Order quantity must be greater than zero
-                  </div>
-                )}
-              </div>
-              <Button
-                onClick={handlePrepareOrder}
+              <Input
+                type="text"
+                value={orderAmount}
+                onChange={handleOrderChange}
                 disabled={isOrderDisabled()}
-                className="beer-button"
-              >
-                {getOrderButtonText()}
-              </Button>
+                placeholder="Enter quantity"
+                className="w-full"
+              />
             </div>
-          )}
+            <Button
+              onClick={handleSubmitOrder}
+              disabled={isOrderDisabled()}
+              className="beer-button"
+            >
+              {getOrderButtonText()}
+            </Button>
+          </div>
         </CardContent>
         <CardFooter className="bg-slate-50 dark:bg-slate-900 text-sm text-muted-foreground px-6 py-3">
           <p>Delivery will arrive in 2 rounds. Plan accordingly!</p>

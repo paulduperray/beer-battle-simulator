@@ -6,4 +6,3 @@ export * from './services/orderService';
 export * from './services/roundService';
 export * from './services/realtimeService';
 export * from './services/gameStatusService';
-export * from './services/playerOrderService';

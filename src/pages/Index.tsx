@@ -16,9 +16,6 @@ const Index = () => {
             <Beer className="h-8 w-8 text-amber-600" />
             <h1 className="text-2xl font-bold text-amber-800">Beer Distribution Game</h1>
           </div>
-          <p className="text-amber-700 mt-1 text-sm max-w-2xl">
-            A simulation of the supply chain dynamics in the beer industry. Players take roles as Factory, Distributor, Wholesaler, and Retailer to manage inventory and minimize costs.
-          </p>
         </div>
         
         {/* Animated beer bubbles decoration */}
@@ -43,20 +40,6 @@ const Index = () => {
         <GameView />
       </div>
       <Toaster position="top-right" />
-      
-      {/* Add global CSS for the beer bubbles animation */}
-      <style>
-        {`
-          @keyframes float {
-            0%, 100% {
-              transform: translateY(0);
-            }
-            50% {
-              transform: translateY(-120px);
-            }
-          }
-        `}
-      </style>
     </div>
   );
 };

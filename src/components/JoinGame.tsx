@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, LogIn, List, RefreshCw, Copy, CheckCircle } from "lucide-react";
+import { Plus, LogIn, List, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,7 +24,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
   const [createdGameId, setCreatedGameId] = useState<string | null>(null);
   const [takenRoles, setTakenRoles] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchRecentGames();
@@ -183,18 +182,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
     toast.success("Game list refreshed");
   };
 
-  const copyGameId = () => {
-    if (createdGameId) {
-      navigator.clipboard.writeText(createdGameId);
-      setCopied(true);
-      toast.success("Game ID copied to clipboard!");
-      
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in">
       <div className="w-full max-w-md px-4">
@@ -301,21 +288,7 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   <Label htmlFor="createdGameId">Your Game ID</Label>
                   <div className="flex items-center space-x-2 p-2 bg-accent/30 rounded-md border border-border">
                     <span className="font-medium text-lg text-accent-foreground">{createdGameId}</span>
-                    <div className="ml-auto flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">(Share this with players)</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={copyGameId}
-                        className="h-8 w-8"
-                      >
-                        {copied ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                    <span className="text-xs text-muted-foreground ml-2">(Share this with other players)</span>
                   </div>
                 </div>
               )}
@@ -372,21 +345,6 @@ const JoinGame: React.FC<JoinGameProps> = ({ onJoin }) => {
                   <Plus className="mr-2 h-4 w-4" />
                   {isLoading ? "Creating..." : "Create Game"}
                 </Button>
-              )}
-              
-              {view === "create" && createdGameId && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <Alert className="bg-blue-50">
-                    <AlertDescription className="text-sm">
-                      <p><strong>Next steps:</strong></p>
-                      <ol className="list-decimal pl-4 mt-1 space-y-1">
-                        <li>Share the Game ID with other players</li>
-                        <li>Each player should select a different role</li>
-                        <li>As admin, use the dashboard to control the game flow</li>
-                      </ol>
-                    </AlertDescription>
-                  </Alert>
-                </div>
               )}
             </div>
           </CardContent>

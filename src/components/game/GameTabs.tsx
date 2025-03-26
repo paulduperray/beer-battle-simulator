@@ -44,7 +44,6 @@ interface GameTabsProps {
     costs: string[];
   };
   currentRound?: number;
-  hasOrderedInCurrentRound?: boolean;
 }
 
 const GameTabs: React.FC<GameTabsProps> = ({
@@ -76,7 +75,6 @@ const GameTabs: React.FC<GameTabsProps> = ({
   onAdminOrderToRetailer,
   chartDataKeys,
   currentRound = 1,
-  hasOrderedInCurrentRound = false,
 }) => {
   return (
     <Tabs defaultValue={view} value={view} onValueChange={setView} className="w-full">
@@ -113,7 +111,6 @@ const GameTabs: React.FC<GameTabsProps> = ({
           currentGameData={currentGameData}
           gameStatus={gameStatus}
           currentRound={currentRound}
-          hasOrderedInCurrentRound={hasOrderedInCurrentRound}
           onPlaceOrder={onPlaceOrder}
           onLogout={onLogout}
         />

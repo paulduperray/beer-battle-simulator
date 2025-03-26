@@ -9,12 +9,6 @@ export async function placeOrder(
   destination: string,
   delivery_round: number
 ) {
-  // Validate order quantity to prevent negative numbers
-  if (quantity < 0) {
-    console.error('Invalid order quantity: Cannot place negative orders');
-    return null;
-  }
-  
   console.log(`Placing order: Game ${gameId}, Round ${round}, Quantity ${quantity}, From ${source} to ${destination}, Delivery in round ${delivery_round}`);
   
   // Return mock data if Supabase is not configured
@@ -32,27 +26,8 @@ export async function placeOrder(
     };
   }
 
-  // Check if player already placed an order in this round
+  // Real Supabase implementation
   try {
-    const { data: existingOrders, error: checkError } = await supabase
-      .from('pending_orders')
-      .select('id')
-      .eq('game_id', gameId)
-      .eq('round', round)
-      .eq('destination', destination)
-      .eq('source', source);
-      
-    if (checkError) {
-      console.error('Error checking existing orders:', checkError);
-      throw checkError;
-    }
-    
-    if (existingOrders && existingOrders.length > 0) {
-      console.warn(`Player already placed an order in round ${round} from ${source} to ${destination}`);
-      return null;
-    }
-
-    // Real Supabase implementation
     const { data, error } = await supabase
       .from('pending_orders')
       .insert({

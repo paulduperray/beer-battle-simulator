@@ -6,7 +6,6 @@ import GameHeader from "./game/GameHeader";
 import LoadingIndicator from "./game/LoadingIndicator";
 import GameTabs from "./game/GameTabs";
 import JoinGame from "./JoinGame";
-import { toast } from "sonner";
 
 const GameView: React.FC = () => {
   const {
@@ -30,8 +29,6 @@ const GameView: React.FC = () => {
     loading,
     gameStatus,
     allRoles,
-    currentRound,
-    hasOrderedInCurrentRound,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,
@@ -59,13 +56,6 @@ const GameView: React.FC = () => {
       setView("player");
     }
   }, [role, setView]);
-
-  // Log when game data changes for debugging
-  useEffect(() => {
-    if (gameId && currentRound) {
-      console.log(`GameView: Current round is ${currentRound}, Game ID: ${gameId}, Role: ${role}, Has ordered: ${hasOrderedInCurrentRound}`);
-    }
-  }, [gameId, currentRound, role, hasOrderedInCurrentRound]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -97,8 +87,6 @@ const GameView: React.FC = () => {
             currentGameData={currentGameData}
             gameStatus={gameStatus}
             allRoles={allRoles}
-            currentRound={currentRound}
-            hasOrderedInCurrentRound={hasOrderedInCurrentRound}
             onJoinGame={handleJoinGame}
             onPlaceOrder={handlePlaceOrder}
             onNextRound={handleNextRound}

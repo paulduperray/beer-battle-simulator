@@ -13,8 +13,7 @@ import {
   getAdminViewData,
   pauseGame,
   resumeGame,
-  startGame,
-  hasPlayerOrderedInRound
+  startGame
 } from "@/lib/supabase/gameService";
 import { supabase } from "@/lib/supabase/client";
 
@@ -37,7 +36,6 @@ export const useGameState = () => {
   const [stock, setStock] = useState<number>(10);
   const [cost, setCost] = useState<number>(0);
   const [roundCost, setRoundCost] = useState<number>(0);
-  const [currentRound, setCurrentRound] = useState<number>(1);
   const [currentGameData, setCurrentGameData] = useState<any[]>([]);
   const [allRolesData, setAllRolesData] = useState<any[]>([]);
   const [playerStocks, setPlayerStocks] = useState<Record<string, number>>({});
@@ -57,7 +55,6 @@ export const useGameState = () => {
   const [loadingCount, setLoadingCount] = useState<number>(0);
   const [gameStatus, setGameStatus] = useState<string>("active");
   const [allRoles, setAllRoles] = useState<string[]>([]);
-  const [hasOrderedInCurrentRound, setHasOrderedInCurrentRound] = useState<boolean>(false);
 
   const loadGameData = useCallback(async () => {
     if (!gameId) return;
@@ -76,47 +73,12 @@ export const useGameState = () => {
       
       const { data: gameData } = await supabase
         .from('games')
-        .select('status, current_round')
+        .select('status')
         .eq('id', gameId)
         .single();
 
       if (gameData) {
         setGameStatus(gameData.status);
-        
-        if (gameData.current_round !== currentRound) {
-          console.log(`Round changed from ${currentRound} to ${gameData.current_round}`);
-          setCurrentRound(gameData.current_round);
-          setHasOrderedInCurrentRound(false); // Reset ordering status on round change
-        } else {
-          // Check if player has already ordered in this round
-          if (role !== 'admin') {
-            let source, destination;
-            if (role === "retailer") {
-              source = "wholesaler";
-              destination = "retailer";
-            } else if (role === "wholesaler") {
-              source = "distributor";
-              destination = "wholesaler";
-            } else if (role === "distributor") {
-              source = "factory";
-              destination = "distributor";
-            } else if (role === "factory") {
-              source = "production";
-              destination = "factory";
-            }
-            
-            if (source && destination) {
-              const hasOrdered = await hasPlayerOrderedInRound(
-                gameId,
-                gameData.current_round,
-                source,
-                destination
-              );
-              console.log(`Checked if player has ordered in round ${gameData.current_round}: ${hasOrdered}`);
-              setHasOrderedInCurrentRound(hasOrdered);
-            }
-          }
-        }
       }
       
       if (role === "admin") {
@@ -186,7 +148,7 @@ export const useGameState = () => {
     } finally {
       setLoading(false);
     }
-  }, [gameId, role, currentRound]);
+  }, [gameId, role]);
 
   const handleJoinGame = async (newGameCode: string, newRole: string) => {
     if (!newGameCode || !newRole) {
@@ -237,11 +199,6 @@ export const useGameState = () => {
         return;
       }
       
-      if (hasOrderedInCurrentRound) {
-        toast.error("You've already placed an order this round");
-        return;
-      }
-      
       let source, destination;
       if (role === "retailer") {
         source = "wholesaler";
@@ -259,31 +216,41 @@ export const useGameState = () => {
         throw new Error("Invalid role");
       }
       
-      console.log(`Placing order in game ${gameId}, current round: ${currentRound}`);
+      const { data: game } = await supabase
+        .from('games')
+        .select('current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (!game) {
+        console.error("Failed to get current round");
+        throw new Error("Failed to get current round");
+      }
+      
+      console.log(`Placing order in game ${gameId}, current round: ${game.current_round}`);
       
       const order = await placeOrder(
         gameId,
-        currentRound,
+        game.current_round,
         orderAmount,
         source,
         destination,
-        currentRound + 2
+        game.current_round + 2
       );
       
       if (order) {
         const costIncrease = orderAmount * getCostMultiplier(role);
-        const costsUpdated = await updateCosts(gameId, currentRound, role, costIncrease);
+        const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
         
         if (costsUpdated) {
           toast.success("Order Placed: You ordered " + orderAmount + " units");
-          setHasOrderedInCurrentRound(true);
           
           await loadGameData();
         } else {
           throw new Error("Failed to update costs");
         }
       } else {
-        toast.error("Failed to place order. You may have already ordered this round.");
+        throw new Error("Failed to place order");
       }
     } catch (error) {
       console.error("Error placing order:", error);
@@ -307,8 +274,6 @@ export const useGameState = () => {
       const { game, newRound } = await advanceToNextRound(gameId);
       
       if (game && newRound) {
-        setCurrentRound(game.current_round);
-        setHasOrderedInCurrentRound(false); // Reset ordering status when advancing to next round
         toast.success("Advanced to round " + game.current_round);
         
         await loadGameData();
@@ -478,7 +443,6 @@ export const useGameState = () => {
     stock,
     cost,
     roundCost,
-    currentRound,
     currentGameData,
     allRolesData,
     playerStocks, 
@@ -491,7 +455,6 @@ export const useGameState = () => {
     loading,
     gameStatus,
     allRoles,
-    hasOrderedInCurrentRound,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,
