@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -12,7 +13,8 @@ import {
   getAdminViewData,
   pauseGame,
   resumeGame,
-  startGame
+  startGame,
+  hasPlayerOrderedInRound
 } from "@/lib/supabase/gameService";
 import { supabase } from "@/lib/supabase/client";
 
@@ -85,6 +87,35 @@ export const useGameState = () => {
           console.log(`Round changed from ${currentRound} to ${gameData.current_round}`);
           setCurrentRound(gameData.current_round);
           setHasOrderedInCurrentRound(false); // Reset ordering status on round change
+        } else {
+          // Check if player has already ordered in this round
+          if (role !== 'admin') {
+            let source, destination;
+            if (role === "retailer") {
+              source = "wholesaler";
+              destination = "retailer";
+            } else if (role === "wholesaler") {
+              source = "distributor";
+              destination = "wholesaler";
+            } else if (role === "distributor") {
+              source = "factory";
+              destination = "distributor";
+            } else if (role === "factory") {
+              source = "production";
+              destination = "factory";
+            }
+            
+            if (source && destination) {
+              const hasOrdered = await hasPlayerOrderedInRound(
+                gameId,
+                gameData.current_round,
+                source,
+                destination
+              );
+              console.log(`Checked if player has ordered in round ${gameData.current_round}: ${hasOrdered}`);
+              setHasOrderedInCurrentRound(hasOrdered);
+            }
+          }
         }
       }
       
