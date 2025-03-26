@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -59,6 +58,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   onLogout
 }) => {
   const [orderAmount, setOrderAmount] = useState<string>("0");
+  const [hasOrderedThisRound, setHasOrderedThisRound] = useState(false);
   const [showOrderConfirm, setShowOrderConfirm] = useState(false);
   const [lastRound, setLastRound] = useState(currentRound);
 
@@ -112,6 +112,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     const amount = Number(orderAmount);
     if (amount > 0) {
       onPlaceOrder(amount);
+      setHasOrderedThisRound(true);
       setShowOrderConfirm(false);
       setOrderAmount("0");
       toast.success(`Order placed: ${amount} units`);
@@ -123,11 +124,11 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   };
 
   const isOrderDisabled = () => {
-    return gameStatus === 'paused' || parseInt(orderAmount) <= 0 || hasOrderedInCurrentRound;
+    return gameStatus === 'paused' || parseInt(orderAmount) <= 0 || hasOrderedThisRound;
   };
 
   const getOrderButtonText = () => {
-    if (hasOrderedInCurrentRound) {
+    if (hasOrderedThisRound) {
       return "Order Placed for This Round";
     } else if (gameStatus === 'paused') {
       return "Game Paused";
@@ -137,13 +138,14 @@ const PlayerView: React.FC<PlayerViewProps> = ({
   };
 
   useEffect(() => {
-    console.log(`Current round: ${currentRound}, Last round: ${lastRound}, Has ordered: ${hasOrderedInCurrentRound}`);
+    console.log(`Current round: ${currentRound}, Last round: ${lastRound}`);
     if (currentRound !== lastRound) {
       setLastRound(currentRound);
+      setHasOrderedThisRound(false);
       toast.info(`Round ${currentRound} has started!`);
-      console.log(`Round changed from ${lastRound} to ${currentRound}`);
+      console.log(`Round changed from ${lastRound} to ${currentRound}, reset hasOrderedThisRound to false`);
     }
-  }, [currentRound, lastRound, hasOrderedInCurrentRound]);
+  }, [currentRound, lastRound]);
 
   useEffect(() => {
     if (gameStatus === 'paused') {
@@ -152,6 +154,10 @@ const PlayerView: React.FC<PlayerViewProps> = ({
       toast.info("Game has been resumed");
     }
   }, [gameStatus, lastRound]);
+
+  useEffect(() => {
+    setHasOrderedThisRound(hasOrderedInCurrentRound);
+  }, [hasOrderedInCurrentRound]);
 
   return (
     <div className="space-y-6">

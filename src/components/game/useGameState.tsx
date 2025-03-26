@@ -83,7 +83,7 @@ export const useGameState = () => {
         if (gameData.current_round !== currentRound) {
           console.log(`Round changed from ${currentRound} to ${gameData.current_round}`);
           setCurrentRound(gameData.current_round);
-          setHasOrderedInCurrentRound(false);
+          setHasOrderedInCurrentRound(false); // Reset ordering status on round change
         }
       }
       
@@ -276,7 +276,7 @@ export const useGameState = () => {
       
       if (game && newRound) {
         setCurrentRound(game.current_round);
-        setHasOrderedInCurrentRound(false);
+        setHasOrderedInCurrentRound(false); // Reset ordering status when advancing to next round
         toast.success("Advanced to round " + game.current_round);
         
         await loadGameData();
