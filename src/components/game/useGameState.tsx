@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -396,7 +395,7 @@ export const useGameState = () => {
       
       console.log(`Admin placing order from retailer to customer in game ${gameId}, current round: ${game.current_round}, quantity: ${quantity}`);
       
-      const order = await placeAdminOrder(
+      const result = await placeAdminOrder(
         gameId,
         game.current_round,
         quantity,
@@ -404,7 +403,7 @@ export const useGameState = () => {
         game.current_round + 1
       );
       
-      if (order) {
+      if (result) {
         toast.success(`Admin order placed: ${quantity} units from retailer`);
         
         await loadGameData();

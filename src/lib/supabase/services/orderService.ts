@@ -64,9 +64,66 @@ export async function placeAdminOrder(
 ) {
   console.log(`Admin placing order: Game ${gameId}, Round ${round}, Quantity ${quantity}, To ${destination}, Delivery in round ${delivery_round}`);
   
-  // For admin ordering from retailer (decreasing stock), we use 'customer' as destination
-  // This is a special admin function that places an order from retailer to customer
-  return placeOrder(gameId, round, quantity, 'retailer', 'customer', delivery_round);
+  // For admin order to simulate customer demand, we'll directly update retailer stock
+  // instead of using the normal order flow since "customer" is not a valid destination
+  try {
+    // First, get the current round data
+    const { data: roundData, error: roundError } = await supabase
+      .from('game_rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('round', round)
+      .single();
+      
+    if (roundError) {
+      console.error('Error fetching round data:', roundError);
+      throw roundError;
+    }
+    
+    // Calculate new retailer stock by subtracting the ordered quantity
+    const newRetailerStock = roundData.retailer_stock - quantity;
+    
+    // Update the retailer's stock for the current round
+    const { data: updateData, error: updateError } = await supabase
+      .from('game_rounds')
+      .update({ retailer_stock: newRetailerStock })
+      .eq('id', roundData.id)
+      .select()
+      .single();
+      
+    if (updateError) {
+      console.error('Error updating retailer stock:', updateError);
+      throw updateError;
+    }
+    
+    console.log('Admin order processed. Retailer stock updated:', updateData);
+    
+    // Create a record in pending_orders for tracking purposes, but set it as already processed
+    // Note: We use 'admin' as source and 'retailer' as destination to avoid constraint violations
+    const { data: orderData, error: orderError } = await supabase
+      .from('pending_orders')
+      .insert({
+        game_id: gameId,
+        round: round,
+        quantity: quantity,
+        source: 'admin',
+        destination: 'retailer',
+        delivery_round: round, // immediate delivery
+        status: 'next_round' // mark as already processed
+      })
+      .select()
+      .single();
+      
+    if (orderError) {
+      console.error('Error recording admin order:', orderError);
+      // Continue even if this fails, as the stock update was successful
+    }
+    
+    return updateData;
+  } catch (error) {
+    console.error('Error in placeAdminOrder function:', error);
+    return null;
+  }
 }
 
 export async function processOrders(gameId: string, round: number) {
