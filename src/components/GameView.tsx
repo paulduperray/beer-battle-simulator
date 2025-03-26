@@ -31,6 +31,7 @@ const GameView: React.FC = () => {
     gameStatus,
     allRoles,
     currentRound,
+    hasOrderedInCurrentRound,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,
@@ -62,9 +63,9 @@ const GameView: React.FC = () => {
   // Log when game data changes for debugging
   useEffect(() => {
     if (gameId && currentRound) {
-      console.log(`GameView: Current round is ${currentRound}, Game ID: ${gameId}, Role: ${role}`);
+      console.log(`GameView: Current round is ${currentRound}, Game ID: ${gameId}, Role: ${role}, Has ordered: ${hasOrderedInCurrentRound}`);
     }
-  }, [gameId, currentRound, role]);
+  }, [gameId, currentRound, role, hasOrderedInCurrentRound]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -97,6 +98,7 @@ const GameView: React.FC = () => {
             gameStatus={gameStatus}
             allRoles={allRoles}
             currentRound={currentRound}
+            hasOrderedInCurrentRound={hasOrderedInCurrentRound}
             onJoinGame={handleJoinGame}
             onPlaceOrder={handlePlaceOrder}
             onNextRound={handleNextRound}
