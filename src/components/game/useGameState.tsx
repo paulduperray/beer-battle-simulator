@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -36,6 +35,7 @@ export const useGameState = () => {
   const [stock, setStock] = useState<number>(10);
   const [cost, setCost] = useState<number>(0);
   const [roundCost, setRoundCost] = useState<number>(0);
+  const [currentRound, setCurrentRound] = useState<number>(1);
   const [currentGameData, setCurrentGameData] = useState<any[]>([]);
   const [allRolesData, setAllRolesData] = useState<any[]>([]);
   const [playerStocks, setPlayerStocks] = useState<Record<string, number>>({});
@@ -55,6 +55,7 @@ export const useGameState = () => {
   const [loadingCount, setLoadingCount] = useState<number>(0);
   const [gameStatus, setGameStatus] = useState<string>("active");
   const [allRoles, setAllRoles] = useState<string[]>([]);
+  const [hasOrderedInCurrentRound, setHasOrderedInCurrentRound] = useState<boolean>(false);
 
   const loadGameData = useCallback(async () => {
     if (!gameId) return;
@@ -73,12 +74,17 @@ export const useGameState = () => {
       
       const { data: gameData } = await supabase
         .from('games')
-        .select('status')
+        .select('status, current_round')
         .eq('id', gameId)
         .single();
 
       if (gameData) {
         setGameStatus(gameData.status);
+        if (gameData.current_round !== currentRound) {
+          console.log(`Round changed from ${currentRound} to ${gameData.current_round}`);
+          setCurrentRound(gameData.current_round);
+          setHasOrderedInCurrentRound(false);
+        }
       }
       
       if (role === "admin") {
@@ -148,7 +154,7 @@ export const useGameState = () => {
     } finally {
       setLoading(false);
     }
-  }, [gameId, role]);
+  }, [gameId, role, currentRound]);
 
   const handleJoinGame = async (newGameCode: string, newRole: string) => {
     if (!newGameCode || !newRole) {
@@ -199,6 +205,11 @@ export const useGameState = () => {
         return;
       }
       
+      if (hasOrderedInCurrentRound) {
+        toast.error("You've already placed an order this round");
+        return;
+      }
+      
       let source, destination;
       if (role === "retailer") {
         source = "wholesaler";
@@ -216,34 +227,24 @@ export const useGameState = () => {
         throw new Error("Invalid role");
       }
       
-      const { data: game } = await supabase
-        .from('games')
-        .select('current_round')
-        .eq('id', gameId)
-        .single();
-      
-      if (!game) {
-        console.error("Failed to get current round");
-        throw new Error("Failed to get current round");
-      }
-      
-      console.log(`Placing order in game ${gameId}, current round: ${game.current_round}`);
+      console.log(`Placing order in game ${gameId}, current round: ${currentRound}`);
       
       const order = await placeOrder(
         gameId,
-        game.current_round,
+        currentRound,
         orderAmount,
         source,
         destination,
-        game.current_round + 2
+        currentRound + 2
       );
       
       if (order) {
         const costIncrease = orderAmount * getCostMultiplier(role);
-        const costsUpdated = await updateCosts(gameId, game.current_round, role, costIncrease);
+        const costsUpdated = await updateCosts(gameId, currentRound, role, costIncrease);
         
         if (costsUpdated) {
           toast.success("Order Placed: You ordered " + orderAmount + " units");
+          setHasOrderedInCurrentRound(true);
           
           await loadGameData();
         } else {
@@ -274,6 +275,8 @@ export const useGameState = () => {
       const { game, newRound } = await advanceToNextRound(gameId);
       
       if (game && newRound) {
+        setCurrentRound(game.current_round);
+        setHasOrderedInCurrentRound(false);
         toast.success("Advanced to round " + game.current_round);
         
         await loadGameData();
@@ -443,6 +446,7 @@ export const useGameState = () => {
     stock,
     cost,
     roundCost,
+    currentRound,
     currentGameData,
     allRolesData,
     playerStocks, 
@@ -455,6 +459,7 @@ export const useGameState = () => {
     loading,
     gameStatus,
     allRoles,
+    hasOrderedInCurrentRound,
     loadGameData,
     handleJoinGame,
     handlePlaceOrder,

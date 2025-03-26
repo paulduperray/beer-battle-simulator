@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -113,6 +112,7 @@ const PlayerView: React.FC<PlayerViewProps> = ({
       onPlaceOrder(amount);
       setHasOrderedThisRound(true);
       setShowOrderConfirm(false);
+      setOrderAmount("0");
       toast.success(`Order placed: ${amount} units`);
     }
   };
@@ -135,21 +135,16 @@ const PlayerView: React.FC<PlayerViewProps> = ({
     }
   };
 
-  // Detect round changes and reset order state
   useEffect(() => {
+    console.log(`Current round: ${currentRound}, Last round: ${lastRound}`);
     if (currentRound !== lastRound) {
       setLastRound(currentRound);
       setHasOrderedThisRound(false);
       toast.info(`Round ${currentRound} has started!`);
+      console.log(`Round changed from ${lastRound} to ${currentRound}, reset hasOrderedThisRound to false`);
     }
   }, [currentRound, lastRound]);
 
-  // Reset order state when a new round begins
-  useEffect(() => {
-    setHasOrderedThisRound(false);
-  }, [currentRound]);
-
-  // Detect game status changes
   useEffect(() => {
     if (gameStatus === 'paused') {
       toast.info("Game has been paused by the administrator");
