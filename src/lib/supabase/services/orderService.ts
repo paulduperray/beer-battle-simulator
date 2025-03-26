@@ -9,6 +9,12 @@ export async function placeOrder(
   destination: string,
   delivery_round: number
 ) {
+  // Validate order quantity to prevent negative numbers
+  if (quantity < 0) {
+    console.error('Invalid order quantity: Cannot place negative orders');
+    return null;
+  }
+  
   console.log(`Placing order: Game ${gameId}, Round ${round}, Quantity ${quantity}, From ${source} to ${destination}, Delivery in round ${delivery_round}`);
   
   // Return mock data if Supabase is not configured
