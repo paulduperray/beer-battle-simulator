@@ -96,12 +96,8 @@ export async function advanceToNextRound(gameId: string) {
       }
     }
 
-    // Process retailer selling to customers (if this is round 2+)
-    if (currentRound > 1) {
-      // Retailer loses stock based on customer order from previous round
-      const prevCustomerOrder = roundData.customer_order || 5;
-      newStocks.retailer_stock = newStocks.retailer_stock - prevCustomerOrder;
-    }
+    // MODIFICATION: Remove the automatic retailer stock reduction based on customer order
+    // We will only reduce retailer stock through explicit admin orders
 
     // Calculate costs for this round
     const roundCosts = {
